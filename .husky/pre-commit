@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Run Prettier on staged files before commit using lint-staged
+npx lint-staged

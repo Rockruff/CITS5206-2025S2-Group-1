@@ -1,6 +1,7 @@
 # hidden files (can opt-in for committing if needed)
 .*
 !.gitignore
+!.husky
 
 # dependencies
 node_modules
