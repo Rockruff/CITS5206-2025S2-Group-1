@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+:root {
+  /* UWA Theme Colors */
+  --primary: #27348b;
+  --secondary: #e2b600;
+}
