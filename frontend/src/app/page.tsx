@@ -1,7 +1,9 @@
 export default function Home() {
   return (
-    <main className="flex h-screen w-screen items-center justify-center bg-[var(--primary)]">
-      <img src="/logo-uwa.svg"></img>
+    <main className="bg-primary text-on-primary flex h-screen w-screen items-center justify-center">
+      <a href="/dashboard" className="underline">
+        Dashboard
+      </a>
     </main>
   );
 }

@@ -1,7 +1,40 @@
 @import "tailwindcss";
 
-:root {
-  /* UWA Theme Colors */
-  --primary: #27348b;
-  --secondary: #e2b600;
+@theme {
+  --color-primary: #27348b;
+  --color-on-primary: white;
+  --color-secondary: #e2b600;
+  --color-on-secondary: var(--color-primary);
+
+  --color-background: var(--color-neutral-50);
+  --color-on-background: black;
+  --color-foreground: white;
+  --color-on-foreground: black;
+
+  --spacing-header-height: calc(var(--spacing) * 16);
+  --spacing-sidebar-width: calc(var(--spacing) * 60);
+  --spacing-sidebar-height: calc(100vh - var(--spacing-header-height));
+}
+
+@utility cotain-strict {
+  contain: strict;
+}
+
+@custom-variant hocus {
+  &:hover,
+  &:focus {
+    @slot;
+  }
+}
+
+@custom-variant hoctive {
+  &:hover,
+  &:focus,
+  &:active {
+    @slot;
+  }
+}
+
+body {
+  @apply bg-background text-black;
 }
