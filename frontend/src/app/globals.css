@@ -7,34 +7,29 @@
   --color-on-secondary: var(--color-primary);
 
   --color-background: var(--color-neutral-50);
-  --color-on-background: black;
   --color-foreground: white;
-  --color-on-foreground: black;
+  --color-on-anyground: black;
+}
 
-  --spacing-header-height: calc(var(--spacing) * 16);
-  --spacing-sidebar-width: calc(var(--spacing) * 60);
-  --spacing-sidebar-height: calc(100vh - var(--spacing-header-height));
+/* layout-related configuration */
+@theme {
+  --z-header: 10;
+  --z-sidebar: 5;
+  --z-popup: 15;
+
+  --h-header: calc(var(--spacing) * 16);
+  --w-sidebar: calc(var(--spacing) * 60);
+  --h-sidebar: calc(100vh - var(--h-header));
 }
 
 @utility cotain-strict {
   contain: strict;
 }
 
-@custom-variant hocus {
-  &:hover,
-  &:focus {
-    @slot;
-  }
-}
-
 @custom-variant hoctive {
   &:hover,
-  &:focus,
+  &:focus-visible,
   &:active {
     @slot;
   }
-}
-
-body {
-  @apply bg-background text-black;
 }
