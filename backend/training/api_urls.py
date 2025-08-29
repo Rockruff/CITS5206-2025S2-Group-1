@@ -1,7 +1,7 @@
 from rest_framework.routers import DefaultRouter
 from .views import (
     DepartmentViewSet,
-    PersonViewSet,
+    UserViewSet,
     PositionViewSet,
     UserPositionViewSet,
     CategoryViewSet,
@@ -17,7 +17,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register(r"departments", DepartmentViewSet)
-router.register(r"people", PersonViewSet)
+router.register(r"users", UserViewSet, basename="user")
 router.register(r"positions", PositionViewSet)
 router.register(r"user_positions", UserPositionViewSet)
 router.register(r"categories", CategoryViewSet)

@@ -30,6 +30,104 @@ class PersonSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class UserCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating users
+    Handles validation and creation of new user records
+    """
+
+    class Meta:
+        model = Person
+        fields = [
+            "first_name",
+            "last_name",
+            "email",
+            "external_id",  # UWA ID
+            "person_type",
+            "department",
+        ]
+
+    def validate(self, data):
+        """
+        Custom validation to ensure either first_name or email is provided
+        """
+        if not data.get("first_name") and not data.get("email"):
+            raise serializers.ValidationError(
+                "Either first_name or email must be provided."
+            )
+        return data
+
+    def validate_email(self, value):
+        """
+        Validate email uniqueness
+        """
+        if value and Person.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user detail view
+    Includes computed fields like full_name
+    """
+
+    full_name = serializers.SerializerMethodField()
+    department_name = serializers.CharField(source="department.name", read_only=True)
+
+    class Meta:
+        model = Person
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "full_name",
+            "email",
+            "external_id",
+            "person_type",
+            "department",
+            "department_name",
+            "active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_full_name(self, obj):
+        """
+        Compute full name from first_name and last_name
+        """
+        if obj.first_name and obj.last_name:
+            return f"{obj.first_name} {obj.last_name}"
+        return obj.first_name or obj.last_name or ""
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating user profile
+    Allows partial updates of user information
+    """
+
+    class Meta:
+        model = Person
+        fields = ["first_name", "last_name", "email", "person_type", "department"]
+
+    def validate_email(self, value):
+        """
+        Validate email uniqueness (excluding current user)
+        """
+        if value:
+            current_user_id = self.instance.id if self.instance else None
+            existing_user = Person.objects.filter(email=value).exclude(
+                id=current_user_id
+            )
+            if existing_user.exists():
+                raise serializers.ValidationError(
+                    "A user with this email already exists."
+                )
+        return value
+
+
 class PositionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Position
