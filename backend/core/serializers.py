@@ -5,30 +5,38 @@ from .models import AppUser, UserAlias, UserGroup, Training
 
 # ── Users ───────────────────────────────────────────────────────────────
 class UserSerializer(serializers.ModelSerializer):
+    # Expose the read-only property
+    uwa_ids = serializers.ReadOnlyField()
+
     class Meta:
         model = AppUser
-        fields = ["id", "username", "email", "full_name", "uwa_id", "role"]
-        read_only_fields = ["id", "uwa_id"]
+        fields = [
+            "id",
+            "name",
+            "role",
+            "uwa_ids",
+        ]  # note: renamed from uwa_ids to uwa_id
+        read_only_fields = ["id", "role", "uwa_ids"]
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
+    uwa_id = serializers.CharField(
+        write_only=True
+    )  # still accepts UWA ID when creating
+
     class Meta:
         model = AppUser
-        fields = ["id", "username", "password", "email", "full_name", "uwa_id", "role"]
+        fields = ["id", "name", "role", "uwa_id"]
         read_only_fields = ["id", "role"]
-        extra_kwargs = {"password": {"write_only": True}}
 
     @transaction.atomic
     def create(self, data):
-        pwd = data.pop("password", None)
+        uwa_id = data.pop("uwa_id")
+        if UserAlias.objects.filter(uwa_id=uwa_id).exists():
+            raise serializers.ValidationError({"uwa_id": "UWA ID already exists"})
+
         user = AppUser.objects.create(**data)
-        if pwd:
-            user.set_password(pwd)
-            user.save(update_fields=["password"])
-        # ensure alias exists (works even if you kept the signal)
-        UserAlias.objects.get_or_create(
-            alias_uwa_id=user.uwa_id, defaults={"user": user}
-        )
+        UserAlias.objects.create(uwa_id=uwa_id, user=user)
         return user
 
 

@@ -50,7 +50,9 @@ source .venv/bin/activate
 # On Windows (cmd.exe):
 # .\.venv\Scripts\activate.bat
 
-# TODO: Add instructions for starting the backend server after scaffolding
+python manage.py makemigrations
+python manage.py migrate
+python manage.py runserver
 ```
 
 ### 4. Start the Frontend Server

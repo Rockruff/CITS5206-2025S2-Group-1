@@ -1,42 +1,43 @@
 from django.db import models
 
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, AbstractUser
 from django.db import models
 
 
-class AppUser(AbstractUser):
+class AppUser(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = (
         ("ADMIN", "Admin"),
-        ("MANAGER", "Manager"),
         ("VIEWER", "Viewer"),
     )
 
-    full_name = models.CharField(max_length=160)
-    uwa_id = models.CharField(max_length=32, unique=True, db_index=True)
+    name = models.CharField(max_length=160)
     role = models.CharField(max_length=16, choices=ROLE_CHOICES, default="VIEWER")
 
-    # AbstractUser already has: username, email, password, is_active, etc.
-    REQUIRED_FIELDS = [
-        "email",
-        "full_name",
-        "uwa_id",
-    ]  # when createsuperuser via username
+    # We do not need username or email for this app.
+    # Use the primary key to satisfy AbstractBaseUser requirements.
+    USERNAME_FIELD = "id"
+
+    @property
+    def uwa_ids(self):
+        aliases = self.aliases.all()
+        return [alias.uwa_id for alias in aliases]
 
     def __str__(self):
-        return f"{self.full_name} ({self.uwa_id})"
+        uwa_ids = self.uwa_ids
+        joined = ", ".join(uwa_ids)
+        return f"{self.name} ({self.uwa_ids})"
 
 
 class UserAlias(models.Model):
     """
-    Har external ID (ya duplicate UWA) ko canonical AppUser se map karta.
-    Merge easy ho jata: aliases re-point kar do.
+    Maps multiple external IDs (e.g., duplicate UWA IDs) to a single AppUser.
     """
 
-    alias_uwa_id = models.CharField(max_length=32, unique=True, db_index=True)
+    uwa_id = models.CharField(max_length=32, unique=True, db_index=True)
     user = models.ForeignKey(AppUser, on_delete=models.CASCADE, related_name="aliases")
 
     def __str__(self):
-        return f"{self.alias_uwa_id} -> {self.user_id}"
+        return f"{self.uwa_id} -> {self.user_id}"
 
 
 class UserGroup(models.Model):

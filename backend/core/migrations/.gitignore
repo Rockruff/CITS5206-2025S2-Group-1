@@ -1,0 +1,6 @@
+# We don't want to commit migration files in early development
+# as they will be frequently changing and can cause merge conflicts.
+# Once the project is more stable, consider removing this .gitignore
+*
+!__init__.py
+!.gitignore

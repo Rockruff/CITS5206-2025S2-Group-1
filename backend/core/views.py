@@ -41,6 +41,16 @@ class UserViewSet(viewsets.ModelViewSet):
         return qs
 
     @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAuthenticated],
+        url_path="me",
+    )
+    def me(self, request):
+        user = request.user
+        return Response(UserSerializer(user).data)
+
+    @action(
         detail=False, methods=["post"], permission_classes=[IsAdmin], url_path="batch"
     )
     def batch(self, request):
@@ -51,17 +61,14 @@ class UserViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             try:
                 for row in iter_user_rows(f):
-                    name, uwa = row["name"], row["uwa_id"]
-                    if AppUser.objects.filter(uwa_id=uwa).exists():
+                    name, uwa_id = row["name"], row["uwa_id"]
+                    # Use the single-user serializer
+                    serializer = UserCreateSerializer({"name": name, "uwa_id": uwa_id})
+                    if serializer.is_valid():
+                        serializer.save()  # this handles creating AppUser + UserAlias
+                        created += 1
+                    else:
                         skipped += 1
-                        continue
-                    u = AppUser.objects.create(username=uwa, full_name=name, uwa_id=uwa)
-                    u.set_password(AppUser.objects.make_random_password())
-                    u.save(update_fields=["password"])
-                    UserAlias.objects.get_or_create(
-                        alias_uwa_id=uwa, defaults={"user": u}
-                    )
-                    created += 1
             except Exception as e:
                 return Response({"detail": f"Import failed: {e}"}, status=400)
         return Response({"created": created, "skipped": skipped}, status=201)

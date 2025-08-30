@@ -15,6 +15,7 @@ out
 next-env.d.ts
 __pycache__
 requirements.txt
+*.sqlite3
 
 # logs
 *.log*
