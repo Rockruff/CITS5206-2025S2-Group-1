@@ -1,53 +1,44 @@
 #!/usr/bin/env node
-// backend/venv-tool.js
-/* A tiny helper invoked by Husky/lint-staged to prep backend deps. */
+const shell = require("shelljs");
+const path = require("path");
+const { spawnSync } = require("child_process");
 
-const { execSync } = require("node:child_process");
-const { existsSync } = require("node:fs");
-const path = require("node:path");
-
-const backendDir = __dirname;
+const backendDir = path.resolve(__dirname);
 const venvDir = path.join(backendDir, ".venv");
-const py =
-  process.platform === "win32" ? path.join(venvDir, "Scripts", "python.exe") : path.join(venvDir, "bin", "python");
+const isWindows = process.platform === "win32";
 
-function sh(cmd, opts = {}) {
-  console.log(`$ ${cmd}`);
-  execSync(cmd, { stdio: "inherit", ...opts });
-}
+// Determine Python command based on OS
+const pythonCmd = isWindows ? "python" : "python3";
 
-try {
-  // 1) Ensure venv
-  if (!existsSync(venvDir)) {
-    sh(`python3 -m venv "${venvDir}"`, { cwd: backendDir });
+// Get path to venv executable/tool
+const venvTool = (name) => {
+  return isWindows ? path.join(venvDir, "Scripts", `${name}.exe`) : path.join(venvDir, "bin", name);
+};
+
+// Run a command with arguments, exit on failure
+const run = (cmd, args) => {
+  const result = spawnSync(cmd, args, { stdio: "inherit" });
+  if (result.error) process.exit(1);
+  if (result.status !== 0) process.exit(result.status);
+};
+
+const mode = process.argv[2];
+shell.cd(backendDir);
+
+if (mode === "--format") {
+  // Format given Python files using black in venv
+  const black = venvTool("black");
+  const files = process.argv.slice(3);
+  if (files.length > 0) run(black, files);
+} else if (mode === "--init") {
+  // Initialize virtual environment and install dependencies
+  if (!shell.test("-d", venvDir)) {
+    run(pythonCmd, ["-m", "venv", ".venv"]);
+
+    const venvPython = venvTool("python");
+    run(venvPython, ["-m", "pip", "install", "black"]);
+    run(venvPython, ["-m", "pip", "install", "pip-tools"]);
+    run(venvPython, ["-m", "piptools", "compile", "requirements.in"]);
+    run(venvPython, ["-m", "pip", "install", "-r", "requirements.txt"]);
   }
-
-  // 2) Ensure pip-tools
-  sh(`"${py}" -m pip install --upgrade pip`, { cwd: backendDir });
-  sh(`"${py}" -m pip install pip-tools`, { cwd: backendDir });
-
-  // 3) Compile requirements.txt if missing but requirements.in exists
-  const reqIn = path.join(backendDir, "requirements.in");
-  const reqTxt = path.join(backendDir, "requirements.txt");
-  if (!existsSync(reqTxt) && existsSync(reqIn)) {
-    sh(`"${py}" -m piptools compile "${reqIn}" -o "${reqTxt}"`, {
-      cwd: backendDir,
-    });
-  }
-
-  // 4) Install deps
-  if (existsSync(reqTxt)) {
-    sh(`"${py}" -m pip install -r "${reqTxt}"`, { cwd: backendDir });
-  } else if (existsSync(reqIn)) {
-    // Fallback: install from .in (not pinned)
-    sh(`"${py}" -m pip install -r "${reqIn}"`, { cwd: backendDir });
-  } else {
-    console.warn("No requirements.in or requirements.txt found. Skipping.");
-  }
-
-  console.log("venv-tool.js: backend environment ready ✅");
-  process.exit(0);
-} catch (e) {
-  console.error("venv-tool.js failed:", e.message);
-  process.exit(1);
 }
