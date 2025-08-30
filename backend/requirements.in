@@ -1,0 +1,14 @@
+
+Django>=5.0,<6
+djangorestframework>=3.15
+djangorestframework-simplejwt>=5.3
+drf-spectacular>=0.27
+django-cors-headers>=4.3
+
+# Excel/CSV import
+openpyxl>=3.1
+
+psycopg2-binary>=2.9
+
+# env loader (optional)
+python-dotenv>=1.0
