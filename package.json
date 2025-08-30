@@ -20,7 +20,8 @@
   },
   "scripts": {
     "prepare": "husky",
-    "postinstall": "node backend/venv-tool.js --init"
+    "postinstall": "node backend/venv-tool.js --init",
+    "py": "node backend/venv-tool.js --python"
   },
   "lint-staged": {
     "*.{css,scss,sass,less,html}": [

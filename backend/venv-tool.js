@@ -34,11 +34,13 @@ if (mode === "--format") {
   // Initialize virtual environment and install dependencies
   if (!shell.test("-d", venvDir)) {
     run(pythonCmd, ["-m", "venv", ".venv"]);
-
-    const venvPython = venvTool("python");
-    run(venvPython, ["-m", "pip", "install", "black"]);
-    run(venvPython, ["-m", "pip", "install", "pip-tools"]);
-    run(venvPython, ["-m", "piptools", "compile", "requirements.in"]);
-    run(venvPython, ["-m", "pip", "install", "-r", "requirements.txt"]);
   }
+  const venvPython = venvTool("python");
+  run(venvPython, ["-m", "pip", "install", "black"]);
+  run(venvPython, ["-m", "pip", "install", "pip-tools"]);
+  run(venvPython, ["-m", "piptools", "compile", "requirements.in"]);
+  run(venvPython, ["-m", "pip", "install", "-r", "requirements.txt"]);
+} else if (mode === "--python") {
+  const venvPython = venvTool("python");
+  run(venvPython, process.argv.slice(3));
 }
