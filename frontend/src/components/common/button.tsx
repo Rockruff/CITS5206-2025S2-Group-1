@@ -27,7 +27,7 @@ function Button(className: string, Icon: LucideIcon | undefined, { href, childre
 const base =
   "flex cursor-pointer items-center gap-3 rounded px-3 py-2 text-nowrap disabled:opacity-50 disabled:cursor-not-allowed";
 const contained = "relative before:absolute before:inset-0 hoctive:before:bg-current/10";
-const outlined = "border hoctive:bg-current/10";
+const outlined = "border border-current hoctive:bg-current/10";
 const text = "hoctive:bg-current/10";
 
 // A text-style button

@@ -49,7 +49,7 @@ const Dialog = withClientOnly(
           close(); // close on background click
         }}
       >
-        <div className="bg-foreground flex max-h-[calc(100vh-8*var(--spacing))] max-w-[calc(100vw-8*var(--spacing))] flex-col gap-4 rounded p-4 md:min-w-sm md:p-6">
+        <div className="bg-popover flex max-h-[calc(100vh-8*var(--spacing))] max-w-[calc(100vw-8*var(--spacing))] flex-col gap-4 rounded p-4 md:min-w-sm md:p-6">
           <div className="flex items-center gap-2">
             <span className="mr-auto flex-1 font-bold">{props.title}</span>
             <ButtonIconOnly icon={X} onClick={close} />
