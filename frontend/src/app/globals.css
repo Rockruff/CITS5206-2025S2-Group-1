@@ -19,6 +19,12 @@
   --h-sidebar: calc(100vh - var(--h-header));
 }
 
+@utility bg-* {
+  --bg: --value(--color-*);
+  background: var(--bg);
+  color: lch(from var(--bg) round((100 - l), 100) 0 0);
+}
+
 @utility cotain-strict {
   contain: strict;
 }

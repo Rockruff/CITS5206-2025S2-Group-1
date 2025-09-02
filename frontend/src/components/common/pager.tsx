@@ -79,7 +79,6 @@ export default function AppPagination({
           </SelectContent>
         </Select>
       </div>
-      current: {currentPage}
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}>
           <ChevronLeftIcon />

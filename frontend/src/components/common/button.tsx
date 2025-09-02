@@ -54,7 +54,10 @@ export function ButtonContained({ className, icon, ...props }: BaseProps & { cla
 // Expect user to specify font-size for icon size
 export function ButtonIconOnly({ className, icon: Icon, ...props }: ButtonAttributes & { icon: LucideIcon }) {
   return (
-    <button className={cn("hoctive:bg-current/10 rounded-full p-[.25em]", className)} {...props}>
+    <button
+      className={cn("hoctive:bg-current/10 flex size-[1.5em] items-center justify-center rounded-full", className)}
+      {...props}
+    >
       <Icon className="size-[1em]" />
     </button>
   );

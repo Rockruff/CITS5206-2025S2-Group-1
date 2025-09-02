@@ -1,71 +1,138 @@
 "use client";
 
-import { FolderPlus, UserRoundPlus } from "lucide-react";
+import { ColumnDef } from "@tanstack/react-table";
+import { EditIcon, FolderPlus, TrashIcon, UserRoundPlus } from "lucide-react";
+import { Group } from "next/dist/shared/lib/router/utils/route-regex";
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
+import { DataGridColumnHeader } from "./col-header";
+import { AddUserToGroupDialog, CreateUserDialog, RemoveUserFromGroupDialog } from "./dialogs";
+import api from "@/api/common";
+import { User, UserGroup } from "@/api/users";
+import UserSelect from "@/components/app/user-select";
 import AppPagination from "@/components/common/pager";
+import Table from "@/components/common/table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Menubar,
+  MenubarContent,
+  MenubarItem,
+  MenubarMenu,
+  MenubarSeparator,
+  MenubarTrigger,
+} from "@/components/ui/menubar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-type User = {
-  id: number;
-  uwa_ids: string[];
-  name: string;
-  role: "Admin" | "User";
-};
-
-type Group = {
-  id: number;
-  name: string;
-};
-
-function UserRow(user: User) {
-  return (
-    <tr key={user.id}>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <Checkbox />
-      </td>
-      <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">{user.uwa_ids.join(", ")}</td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="flex items-center">
-          <div className="h-10 w-10 flex-shrink-0">
-            <img
-              className="h-10 w-10 rounded-full"
-              src={`https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(user.name)}`}
-              alt={user.name}
-            />
-          </div>
-          <div className="ml-4">
-            <div className="text-sm font-medium text-gray-900">{user.name}</div>
-          </div>
-        </div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span className="inline-flex rounded-full bg-purple-100 px-2 text-xs leading-5 font-semibold text-purple-800">
-          {user.role}
-        </span>
-      </td>
-      <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
-        <button className="edit-btn mr-3 text-indigo-600 hover:text-indigo-900" data-id="USR001">
-          <i className="fas fa-edit"></i>
-        </button>
-        <button className="delete-btn text-red-600 hover:text-red-900" data-id="USR001">
-          <i className="fas fa-trash-alt"></i>
-        </button>
-      </td>
-    </tr>
-  );
-}
+import { useSelection } from "@/hooks/selection";
 
 export default function Users() {
-  const users: User[] = [
-    { id: 1, uwa_ids: ["UWA001"], name: "Alice Johnson", role: "Admin" },
-    { id: 2, uwa_ids: ["UWA002"], name: "Bob Smith", role: "User" },
-    { id: 3, uwa_ids: ["UWA003"], name: "Charlie Brown", role: "User" },
-    { id: 4, uwa_ids: ["UWA004"], name: "Diana Prince", role: "Admin" },
-    { id: 5, uwa_ids: ["UWA005"], name: "Ethan Hunt", role: "User" },
+  const [users, setUsers] = useState<User[]>([]);
+  const selectedUsers = useSelection<User>([]);
+
+  const selectedUserGroups = useSelection<UserGroup>([
+    { id: "1", name: "HSW Staff" },
+    { id: "2", name: "UWA Student" },
+    { id: "3", name: "CSSE Staff" },
+    { id: "4", name: "Student" },
+    { id: "5", name: "HSW Staff" },
+    { id: "6", name: "Student" },
+  ]);
+
+  useEffect(() => {
+    api.get<User[]>("/api/users").then(setUsers);
+  }, []);
+
+  const columns: ColumnDef<User>[] = [
+    {
+      accessorKey: "id",
+      size: 64,
+      enableResizing: false,
+      header: () => (
+        <div className="flex items-center">
+          <Checkbox
+            className="bg-background"
+            defaultChecked={selectedUsers.has(...users)}
+            onCheckedChange={(checked) => {
+              if (checked) selectedUsers.add(...users);
+              else selectedUsers.remove(...users);
+            }}
+          />
+        </div>
+      ),
+      cell: ({ row: { original } }) => (
+        <div className="flex items-center">
+          <Checkbox
+            defaultChecked={selectedUsers.has(original)}
+            onCheckedChange={(checked) => {
+              if (checked) selectedUsers.add(original);
+              else selectedUsers.remove(original);
+            }}
+          />
+        </div>
+      ),
+    },
+    {
+      accessorKey: "name",
+      size: 1920,
+      header: (props) => {
+        return <DataGridColumnHeader title="NAME" column={props.column} />;
+      },
+      cell: ({ row: { original: user } }) => {
+        return (
+          <div className="flex items-center">
+            <div className="h-10 w-10 flex-shrink-0">
+              <img
+                className="h-10 w-10 rounded-full"
+                src={`https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(user.name)}`}
+                alt={user.name}
+              />
+            </div>
+            <Link href={`/dashboard/users/${user.id}`} className="hoctive:underline ml-4">
+              <div className="text-sm">{user.name}</div>
+              <div className="text-xs before:content-['('] after:content-[')']">{user.uwa_ids.join(", ")}</div>
+            </Link>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "role",
+      size: 20,
+      header: (props) => {
+        return <DataGridColumnHeader title="ROLE" column={props.column} />;
+      },
+      cell: ({ row: { original: user } }) => {
+        return (
+          <Select defaultValue={user.role}>
+            <SelectTrigger className="w-[12ch]">
+              <SelectValue placeholder="Role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ADMIN">Admin</SelectItem>
+              <SelectItem value="VIEWER">Viewer</SelectItem>
+            </SelectContent>
+          </Select>
+        );
+      },
+    },
+    {
+      accessorKey: "actions",
+      size: 64,
+      enableResizing: false,
+      header: "Actions",
+      cell: ({ row: { original } }) => (
+        <>
+          <button className="edit-btn mr-3 text-indigo-600 hover:text-indigo-900" data-id="USR001">
+            <EditIcon />
+          </button>
+          <button className="delete-btn text-red-600 hover:text-red-900" data-id="USR001">
+            <TrashIcon />
+          </button>
+        </>
+      ),
+    },
   ];
 
   // Dummy groups for UI
@@ -92,12 +159,9 @@ export default function Users() {
   const [pageSize, setPageSize] = useState(10);
   const pageSizeOptions = [5, 10, 20, 50, 100, 200, 500, 1000];
 
-  useEffect(() => {
-    setTimeout(() => {
-      setTotalItems(5000);
-      setCurrentPage(5000);
-    }, 1000);
-  }, []);
+  const createUserDialog = CreateUserDialog();
+  const addUserToGroupDialog = AddUserToGroupDialog(selectedUsers, selectedUserGroups);
+  const removeUserFromGroupDialog = RemoveUserFromGroupDialog(selectedUsers, selectedUserGroups);
 
   return (
     <>
@@ -105,6 +169,8 @@ export default function Users() {
         <h1 className="text-2xl font-bold">User Management</h1>
         <p className="text-muted-foreground">Manage people and groups</p>
       </div>
+
+      <UserSelect selection={selectedUsers} />
 
       <div className="flex gap-2">
         <Button variant="default">
@@ -119,13 +185,13 @@ export default function Users() {
       </div>
 
       <div className="overflow-hidden rounded-lg bg-white shadow">
-        <div className="flex flex-col gap-4 border-b border-gray-200 px-4 py-3 md:flex-row md:items-center">
+        <div className="flex flex-col gap-4 px-4 py-3 md:flex-row md:items-center">
           <Input type="text" placeholder="Search User..." />
 
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground text-sm">Group:</span>
-            <Select>
-              <SelectTrigger className="w-[180px]" value="All Users">
+            <Select defaultValue="All Users">
+              <SelectTrigger>
                 <SelectValue placeholder="All Users" />
               </SelectTrigger>
               <SelectContent>
@@ -140,51 +206,27 @@ export default function Users() {
               </SelectContent>
             </Select>
           </div>
+
+          <Menubar>
+            <MenubarMenu>
+              <MenubarTrigger>...</MenubarTrigger>
+              <MenubarContent>
+                <MenubarItem onClick={createUserDialog.open}>Create New User</MenubarItem>
+                <MenubarSeparator />
+                <MenubarItem onClick={addUserToGroupDialog.open}>Add To Group</MenubarItem>
+                <MenubarItem onClick={removeUserFromGroupDialog.open}>Remove From Group</MenubarItem>
+                <MenubarSeparator />
+                <MenubarItem>Delete Selected User</MenubarItem>
+                <MenubarSeparator />
+                <MenubarItem>Import Users</MenubarItem>
+              </MenubarContent>
+            </MenubarMenu>
+          </Menubar>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-                >
-                  <Checkbox />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-                >
-                  UWA ID
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-                >
-                  Name
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-                >
-                  Role
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase"
-                >
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white" id="userTableBody">
-              {users.map(UserRow)}
-            </tbody>
-          </table>
-        </div>
+        <Table columns={columns} data={users}></Table>
 
-        <div className="border-t border-gray-200 px-4 py-3">
+        <div className="px-4 py-3">
           <AppPagination
             totalItems={totalItems}
             pageSize={pageSize}
@@ -195,6 +237,10 @@ export default function Users() {
           />
         </div>
       </div>
+
+      {createUserDialog.node}
+      {addUserToGroupDialog.node}
+      {removeUserFromGroupDialog.node}
     </>
   );
 }
