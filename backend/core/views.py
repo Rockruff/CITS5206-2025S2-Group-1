@@ -10,6 +10,7 @@ from .serializers import (
     UserSerializer,
     UserCreateSerializer,
     UserRoleUpdateSerializer,
+    UserAliasSerializer,
     UserGroupSerializer,
     TrainingSerializer,
 )
@@ -119,6 +120,44 @@ class UserViewSet(viewsets.ModelViewSet):
             # NOTE: if other tables later FK AppUser, update those FKs here
             src.delete()
         return Response({"detail": "Merged", "survivor": UserSerializer(dst).data})
+
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[IsAdmin],
+        url_path="aliases",
+    )
+    def add_alias(self, request, pk=None):
+        """Add an alias (UWA ID) to a user"""
+        user = self.get_object()
+        serializer = UserAliasSerializer(data=request.data)
+        if serializer.is_valid():
+            # Create the alias linked to this user
+            UserAlias.objects.create(
+                uwa_id=serializer.validated_data["uwa_id"], user=user
+            )
+            return Response(UserSerializer(user).data)
+        return Response(serializer.errors, status=400)
+
+    @action(
+        detail=True,
+        methods=["delete"],
+        permission_classes=[IsAdmin],
+        url_path="aliases",
+    )
+    def remove_alias(self, request, pk=None):
+        """Remove an alias (UWA ID) from a user"""
+        user = self.get_object()
+        uwa_id = request.data.get("uwa_id")
+        if not uwa_id:
+            return Response({"detail": "uwa_id is required"}, status=400)
+
+        try:
+            alias = UserAlias.objects.get(uwa_id=uwa_id, user=user)
+            alias.delete()
+            return Response(UserSerializer(user).data)
+        except UserAlias.DoesNotExist:
+            return Response({"detail": "Alias not found"}, status=404)
 
 
 # ── User Groups ─────────────────────────────────────────────────────────
