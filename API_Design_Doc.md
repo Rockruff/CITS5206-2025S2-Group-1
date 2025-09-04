@@ -380,6 +380,129 @@ Choose one style from below and stick to that.
 
 ---
 
+# 5. Wei
+
+### Create Training
+
+**POST** `/trainings`
+
+**Payload:**
+if `type == "lms"`:
+
+```json
+{
+    "name": "string",
+    "expiry" : 0,
+    "type" ："lms",
+    "config": {
+        "course_id": "string",
+        "completance_score": 0 //Integer
+    }
+}
+```
+
+if `type == "trybooking"`:
+
+```json
+{
+  "name": "string",
+  "expiry": 0,
+  "type": "trybooking",
+  "config": {
+    "event_template_id": "string",
+    "required_attendance": true //Boolean
+  }
+}
+```
+
+if `type == "external"`:
+
+```json
+{
+  "name": "string",
+  "expiry": 0,
+  "type": "external",
+  "config": {
+    "proof_fields": [
+      //custom field array
+      {
+        "key": "string", //field name
+        "label": "string", //UI present name
+        "input": "text", // text/number/date/file
+        "required": true //Boolean
+      }
+    ]
+  }
+}
+```
+
+**Responses:**
+
+- `201 Created` – Training created - Headers: `Location: /trainings/{training_id}`, Body: `training`
+- `400 Bad Request` – Invalid input
+- `409 Conflict` - Training name already exists
+- `422 Unprocessable Entity` - Validation errors (invalid course_id, etc.)
+
+---
+
+### Get Training
+
+**GET** `/trainings/{training_id}`
+
+**Responses:**
+
+- `200 OK` – Training details returned
+
+```json
+{
+    "id": 0， //Integer
+    "name": "string",
+    "expiry": 0,
+    "type": "lms | trybooking | external",
+    "config": { ... },
+    "created_at": "2025-09-01T00:00:00Z" //Timestamp
+}
+```
+
+- `404 Not Found` – Training not found
+
+---
+
+### Edit Training
+
+**PATCH** `/trainings/{training_id}`
+
+**Payload:**
+
+```json
+{
+    "name": "string",
+    "expiry" : 0,
+    "type": "lms | trybooking | external",
+    "config": { ... }
+}
+```
+
+**Responses:**
+
+- `200 OK` – Training updated
+- `400 Bad Request` – Invalid input
+- `409 Conflict` – Training name already exists
+- `422 Unprocessable Entity` - Validation errors (invalid course_id, etc)
+
+---
+
+### Delete Training
+
+**DELETE** `/trainings/{training_id}`
+
+**Responses:**
+
+- `204 No Content` – Training deleted
+- `404 Not Found` – Training not found
+
+---
+
 # 6. Manas
 
 ### Show Groups Assigned to a Training
