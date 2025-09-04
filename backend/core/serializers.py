@@ -5,8 +5,10 @@ from .models import AppUser, UserAlias, UserGroup, Training
 
 # ── Users ───────────────────────────────────────────────────────────────
 class UserSerializer(serializers.ModelSerializer):
-    # Expose the read-only property
-    uwa_ids = serializers.ReadOnlyField()
+    # Use primary UWA ID as the id field, and expose all UWA IDs as aliases
+    id = serializers.SerializerMethodField()
+    aliases = serializers.ReadOnlyField(source="uwa_ids")
+    group_ids = serializers.SerializerMethodField()
 
     class Meta:
         model = AppUser
@@ -14,9 +16,18 @@ class UserSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "role",
-            "uwa_ids",
-        ]  # note: renamed from uwa_ids to uwa_id
-        read_only_fields = ["id", "role", "uwa_ids"]
+            "aliases",
+            "group_ids",
+        ]
+        read_only_fields = ["id", "role", "aliases", "group_ids"]
+
+    def get_id(self, obj):
+        # Return the primary UWA ID as the id field
+        uwa_ids = obj.uwa_ids
+        return uwa_ids[0] if uwa_ids else None
+
+    def get_group_ids(self, obj):
+        return list(obj.user_groups.values_list("id", flat=True))
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -44,6 +55,17 @@ class UserRoleUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppUser
         fields = ["role"]
+
+
+class UserAliasSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserAlias
+        fields = ["uwa_id"]
+
+    def validate_uwa_id(self, value):
+        if UserAlias.objects.filter(uwa_id=value).exists():
+            raise serializers.ValidationError("UWA ID already exists")
+        return value
 
 
 # ── Groups ──────────────────────────────────────────────────────────────
