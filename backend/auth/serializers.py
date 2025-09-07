@@ -18,7 +18,7 @@ class CustomTokenObtainPairSerializer(serializers.Serializer):
             raise serializers.ValidationError("UWA ID is required")
 
         try:
-            alias = UserAlias.objects.get(uwa_id=uwa_id)
+            alias = UserAlias.objects.get(id=uwa_id)
         except UserAlias.DoesNotExist:
             raise serializers.ValidationError("User with given UWA ID does not exist")
 

@@ -67,7 +67,7 @@ DATABASES = {
 }
 
 
-AUTH_USER_MODEL = "core.AppUser"
+AUTH_USER_MODEL = "core.User"
 TIME_ZONE = "Australia/Perth"
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

@@ -1,11 +1,11 @@
 from django.db.models.signals import post_migrate
 from django.dispatch import receiver
-from .models import AppUser, UserAlias
+from .models import User, UserAlias
 
 
 @receiver(post_migrate)
 def create_hardcoded_admins(sender, **kwargs):
-    for name, *uwa_ids in [
+    for name, id, *aliases in [
         ("Christina Fington", "24260355"),
         ("Dani Thomas", "24261923"),
         ("Gayathri Kasunthika Kanakaratne", "24297797"),
@@ -14,8 +14,6 @@ def create_hardcoded_admins(sender, **kwargs):
         ("Wei Dai", "24076678"),
         ("Zhaodong Shen", "24301655", "00117401"),
     ]:
-        (admin_user, created) = AppUser.objects.get_or_create(name=name, role="ADMIN")
-        for uwa_id in uwa_ids:
-            (alias, created) = UserAlias.objects.get_or_create(
-                uwa_id=uwa_id, user=admin_user
-            )
+        (admin_user, _) = User.objects.get_or_create(id=id, name=name, role="ADMIN")
+        for id in [id, *aliases]:
+            UserAlias.objects.get_or_create(id=id, user=admin_user)

@@ -1,6 +1,6 @@
 from django.db import transaction
 from rest_framework import serializers
-from .models import AppUser, UserAlias, UserGroup, Training
+from core.models import User, UserAlias
 
 
 # ── Users ───────────────────────────────────────────────────────────────
@@ -12,7 +12,7 @@ class UserSerializer(serializers.ModelSerializer):
     groups = serializers.SerializerMethodField()
 
     class Meta:
-        model = AppUser
+        model = User
         fields = [
             "id",
             "name",
@@ -33,7 +33,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_groups(self, obj):
         """Return list of user group IDs the user belongs to"""
-        return list(obj.user_groups.values_list("id", flat=True))
+        return list(obj.groups.values_list("id", flat=True))
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -42,7 +42,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="full_name")
 
     class Meta:
-        model = AppUser
+        model = User
         fields = ["id", "name"]
 
     def validate_id(self, value):
@@ -57,9 +57,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         full_name = validated_data.get("full_name")
 
         # Create user with UWA ID as username
-        user = AppUser.objects.create(
-            username=uwa_id, full_name=full_name, uwa_id=uwa_id
-        )
+        user = User.objects.create(username=uwa_id, full_name=full_name, uwa_id=uwa_id)
 
         # Create alias
         UserAlias.objects.create(alias_uwa_id=uwa_id, user=user)
@@ -74,7 +72,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="full_name", required=False)
 
     class Meta:
-        model = AppUser
+        model = User
         fields = ["id", "name", "role"]
 
     def validate_id(self, value):
@@ -126,27 +124,3 @@ class UserAliasSerializer(serializers.ModelSerializer):
         if UserAlias.objects.filter(alias_uwa_id=value).exists():
             raise serializers.ValidationError("UWA ID already exists")
         return value
-
-
-# ── Groups ──────────────────────────────────────────────────────────────
-class UserGroupSerializer(serializers.ModelSerializer):
-    members_count = serializers.IntegerField(source="members.count", read_only=True)
-
-    class Meta:
-        model = UserGroup
-        fields = ["id", "name", "members_count"]
-
-
-# ── Trainings ───────────────────────────────────────────────────────────
-class TrainingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Training
-        fields = ["id", "name", "ttype", "completion_score", "proof_fields"]
-
-    def validate(self, attrs):
-        t = attrs.get("ttype", getattr(self.instance, "ttype", None))
-        if t == "LMS" and not attrs.get("completion_score"):
-            raise serializers.ValidationError("completion_score required for LMS")
-        if t == "EXTERNAL" and not attrs.get("proof_fields"):
-            raise serializers.ValidationError("proof_fields required for EXTERNAL")
-        return attrs
