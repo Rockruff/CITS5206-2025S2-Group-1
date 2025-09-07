@@ -1,13 +1,23 @@
 from django.db import models
+from django.core.validators import RegexValidator
 from django.contrib.auth.models import AbstractBaseUser
 from uuid import uuid4
 
 
-class User(AbstractBaseUser):
+class HasUwaId(models.Model):
+    id = models.CharField(
+        primary_key=True,
+        max_length=15,
+        validators=[RegexValidator(regex=r"^\d{8}$")],  # Only 8-digit for now
+    )
+
+    class Meta:
+        abstract = True
+
+
+class User(HasUwaId, AbstractBaseUser):
     ROLE_CHOICES = (("ADMIN", "Admin"), ("VIEWER", "Viewer"))
 
-    # UWA ID
-    id = models.CharField(max_length=15, primary_key=True)
     # Full Name
     name = models.CharField(max_length=127)
     # User Role
@@ -18,9 +28,7 @@ class User(AbstractBaseUser):
     USERNAME_FIELD = "id"
 
 
-class UserAlias(models.Model):
-    # Alias UWA ID
-    id = models.CharField(max_length=15, primary_key=True)
+class UserAlias(HasUwaId):
     # Target User
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="aliases")
 
