@@ -1,15 +1,17 @@
 from django.db import transaction
 from django.db.models import Q
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.core.paginator import Paginator
 
 from .models import AppUser, UserAlias, UserGroup, Training, TrainingAssignment
 from .serializers import (
     UserSerializer,
     UserCreateSerializer,
-    UserRoleUpdateSerializer,
+    UserUpdateSerializer,
+    UserAliasSerializer,
     UserGroupSerializer,
     TrainingSerializer,
 )
@@ -25,100 +27,209 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "create":
             return UserCreateSerializer
-        if self.action == "set_role":
-            return UserRoleUpdateSerializer
+        if self.action in ["update", "partial_update"]:
+            return UserUpdateSerializer
         return UserSerializer
 
     def get_queryset(self):
+        """Override to support filtering and ordering"""
         qs = super().get_queryset()
-        q = self.request.query_params.get("q")
-        if q:
-            qs = qs.filter(
-                Q(full_name__icontains=q)
-                | Q(uwa_id__icontains=q)
-                | Q(username__icontains=q)
-            )
+
+        # Name keyword search
+        name = self.request.query_params.get("name")
+        if name:
+            qs = qs.filter(Q(full_name__icontains=name) | Q(uwa_id__icontains=name))
+
+        # Role filter
+        role = self.request.query_params.get("role")
+        if role:
+            qs = qs.filter(role=role)
+
+        # Group filter
+        group = self.request.query_params.get("group")
+        if group:
+            qs = qs.filter(user_groups__id=group)
+
+        # Ordering
+        order_by = self.request.query_params.get("order_by", "id")
+        if order_by.startswith("-"):
+            field = order_by[1:]
+            if field in ["id", "name", "role"]:
+                order_field = f"-{field}" if field != "name" else "-full_name"
+                qs = qs.order_by(order_field)
+        else:
+            if order_by in ["id", "name", "role"]:
+                order_field = order_by if order_by != "name" else "full_name"
+                qs = qs.order_by(order_field)
+
         return qs
 
-    @action(
-        detail=False,
-        methods=["get"],
-        permission_classes=[IsAuthenticated],
-        url_path="me",
-    )
-    def me(self, request):
-        user = request.user
-        return Response(UserSerializer(user).data)
+    def list(self, request, *args, **kwargs):
+        """Custom list with pagination parameters"""
+        queryset = self.get_queryset()
 
-    @action(
-        detail=False, methods=["post"], permission_classes=[IsAdmin], url_path="batch"
-    )
+        # Get pagination parameters
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("page_size", 10))
+
+        # Paginate
+        paginator = Paginator(queryset, page_size)
+        page_obj = paginator.get_page(page)
+
+        # Serialize data
+        serializer = self.get_serializer(page_obj, many=True)
+
+        return Response(
+            {
+                "page": page,
+                "page_size": page_size,
+                "total_pages": paginator.num_pages,
+                "total_items": paginator.count,
+                "items": serializer.data,
+            }
+        )
+
+    def create(self, request, *args, **kwargs):
+        """Create user with proper error handling"""
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            # Return same format as GET /users/{user_id}
+            return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
+        # Extract first error message for simple error format
+        first_error = next(iter(serializer.errors.values()))[0]
+        return Response({"error": str(first_error)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def retrieve(self, request, *args, **kwargs):
+        """Get single user by user_id (UWA ID or primary key)"""
+        user_id = kwargs.get("pk")
+
+        # Try to find user by UWA ID first, then by primary key
+        try:
+            # First try to find by UWA ID through alias
+            alias = UserAlias.objects.select_related("user").get(alias_uwa_id=user_id)
+            user = alias.user
+        except UserAlias.DoesNotExist:
+            try:
+                # Then try by primary UWA ID
+                user = AppUser.objects.get(uwa_id=user_id)
+            except AppUser.DoesNotExist:
+                try:
+                    # Finally try by primary key
+                    user = AppUser.objects.get(pk=user_id)
+                except (AppUser.DoesNotExist, ValueError):
+                    return Response(status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        """Update user profile"""
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(UserSerializer(user).data)
+
+        # Extract first error message for simple error format
+        first_error = next(iter(serializer.errors.values()))[0]
+        return Response({"error": str(first_error)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete user"""
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["post"], permission_classes=[IsAdmin])
     def batch(self, request):
+        """Batch create users from uploaded file"""
         f = request.FILES.get("file")
         if not f:
-            return Response({"detail": "Upload a file with key 'file'."}, status=400)
-        created = skipped = 0
+            return Response({"error": "Upload a file with key 'file'."}, status=400)
+
+        errors = []
+        created = 0
+
         with transaction.atomic():
             try:
-                for row in iter_user_rows(f):
-                    name, uwa_id = row["name"], row["uwa_id"]
-                    # Use the single-user serializer
-                    serializer = UserCreateSerializer({"name": name, "uwa_id": uwa_id})
+                for row_idx, row in enumerate(iter_user_rows(f)):
+                    name, uwa_id = row.get("name"), row.get("uwa_id")
+
+                    if not name or not uwa_id:
+                        errors.append({"row": row_idx, "msg": "Missing name or UWA ID"})
+                        continue
+
+                    # Check if UWA ID exists
+                    existing_alias = UserAlias.objects.filter(
+                        alias_uwa_id=uwa_id
+                    ).first()
+                    if existing_alias:
+                        # Check if name matches
+                        if existing_alias.user.full_name != name:
+                            errors.append(
+                                {
+                                    "row": row_idx,
+                                    "msg": f"Name mismatch for UWA ID {uwa_id}",
+                                }
+                            )
+                        continue
+
+                    # Create new user
+                    serializer = UserCreateSerializer(data={"id": uwa_id, "name": name})
                     if serializer.is_valid():
-                        serializer.save()  # this handles creating AppUser + UserAlias
+                        serializer.save()
                         created += 1
                     else:
-                        skipped += 1
+                        errors.append({"row": row_idx, "msg": "Invalid user data"})
+
             except Exception as e:
-                return Response({"detail": f"Import failed: {e}"}, status=400)
-        return Response({"created": created, "skipped": skipped}, status=201)
+                return Response({"error": f"Import failed: {e}"}, status=400)
 
-    @action(
-        detail=True,
-        methods=["patch"],
-        permission_classes=[IsAdmin],
-        url_path="set-role",
-    )
-    def set_role(self, request, pk=None):
-        u = self.get_object()
-        s = UserRoleUpdateSerializer(u, data=request.data, partial=True)
-        s.is_valid(raise_exception=True)
-        s.save()
-        return Response(UserSerializer(u).data)
+        if errors:
+            return Response({"errors": errors}, status=400)
 
-    @action(
-        detail=False, methods=["post"], permission_classes=[IsAdmin], url_path="merge"
-    )
-    def merge(self, request):
-        src_uwa = request.data.get("from_uwa_id")
-        dst_uwa = request.data.get("to_uwa_id")
-        if not (src_uwa and dst_uwa):
-            return Response(
-                {"detail": "from_uwa_id and to_uwa_id required"}, status=400
-            )
-        if src_uwa == dst_uwa:
-            return Response({"detail": "No-op"}, status=200)
+        return Response({"created": created}, status=201)
 
-        def resolve(uwa):
-            try:
-                return (
-                    UserAlias.objects.select_related("user").get(alias_uwa_id=uwa).user
-                )
-            except UserAlias.DoesNotExist:
-                return AppUser.objects.get(uwa_id=uwa)
+    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    def aliases(self, request, pk=None):
+        """Add alias to user"""
+        user = self.get_object()
+        serializer = UserAliasSerializer(data=request.data)
 
-        with transaction.atomic():
-            try:
-                src = resolve(src_uwa)
-                dst = resolve(dst_uwa)
-            except AppUser.DoesNotExist:
-                return Response({"detail": "One or both users not found"}, status=404)
-            if src.id == dst.id:
-                return Response({"detail": "Already same"}, status=200)
-            UserAlias.objects.filter(user=src).update(user=dst)
-            # NOTE: if other tables later FK AppUser, update those FKs here
-            src.delete()
-        return Response({"detail": "Merged", "survivor": UserSerializer(dst).data})
+        if serializer.is_valid():
+            uwa_id = serializer.validated_data["id"]
+            # Check if alias already exists
+            if UserAlias.objects.filter(alias_uwa_id=uwa_id).exists():
+                return Response({"error": "UWA ID already exists"}, status=400)
+
+            UserAlias.objects.create(alias_uwa_id=uwa_id, user=user)
+            return Response(UserSerializer(user).data)
+
+        return Response({"error": "Invalid UWA ID"}, status=400)
+
+    @aliases.mapping.delete
+    def remove_alias(self, request, pk=None):
+        """Remove alias from user"""
+        user = self.get_object()
+        uwa_id = request.data.get("id")
+
+        if not uwa_id:
+            return Response({"error": "UWA ID is required"}, status=400)
+
+        # Don't allow removing primary UWA ID
+        if uwa_id == user.uwa_id:
+            return Response({"error": "Cannot remove primary UWA ID"}, status=400)
+
+        try:
+            alias = UserAlias.objects.get(alias_uwa_id=uwa_id, user=user)
+            alias.delete()
+            return Response(UserSerializer(user).data)
+        except UserAlias.DoesNotExist:
+            return Response({"error": "Alias not found"}, status=404)
 
 
 # ── User Groups ─────────────────────────────────────────────────────────
