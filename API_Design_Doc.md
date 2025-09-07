@@ -6,56 +6,64 @@
 /api
 ```
 
-**Shared Error Message Structure:**
+---
 
-For simple error message, report:
+## HTTP Status Codes
 
-```json
-{
-  "error": "Error message here"
-}
-```
+| Code | Meaning                                             |
+| ---- | --------------------------------------------------- |
+| 200  | Success                                             |
+| 400  | Bad Request — include an error message              |
+| 404  | Not Found — only when the URL entity does not exist |
 
-Some API may need to provide error details that cannot be easily covered in an error message. e.g. for batch importing, user may want to know which rows has error. In this case, you may want to define your custom error structure seperately.
+**Example:** Accessing `/users/12345678` when user `12345678` does not exist returns `404`, not `400`.
 
 ---
 
-# 1. Siqi
+## Error Handling
+
+**Single error:**
+
+When error occurs, all API should return error in a consistent format.
+
+```json
+{
+  "error": "Invalid UWA ID"
+}
+```
+
+**Batch or complex errors:**
+
+Currently, only `/users/batch` need this format.
+
+```json
+{
+  "errors": [
+    { "row": 0, "msg": "Invalid UWA ID" },
+    { "row": 3, "msg": "Name mismatch" }
+  ]
+}
+```
+
+---
+
+# 1. Users
 
 ### Create User
 
 **POST** `/users`
 
-**Payload:**
-
-```
+```json
 {
-    "name": "xxx",
-    "uwa_id": "xxx"
+  "id": "12345678",
+  "name": "Alice Johnson"
 }
 ```
 
-- `200 OK` – User successfully created
-- `400 Bad Request` – Invalid input, or user is present
+- Should also save initial alias.
+- If UWA ID exists → error.
 
-### Create User
-
-**POST** `/users/batch`
-
-payload: a file
-
-**Responses:**
-
-```
-{
-    error: [
-        { row: 0, msg: "xxx" }
-    ]
-}
-```
-
-- `200 OK` – User successfully created. ignore existing users
-- `400 Bad Request` – Invalid input
+**Response:** Same as `GET /users/{user_id}`.
 
 ---
 
@@ -63,14 +71,44 @@ payload: a file
 
 **GET** `/users/{user_id}`
 
-**Responses:**
-
+```json
+{
+  "id": "12345678",
+  "name": "Alice Johnson",
+  "role": "VIEWER",
+  "aliases": ["12345678", "87654321"],
+  "groups": ["a1b2c3d4-e5f6-7a8b-9c0d-123456abcdef"]
+}
 ```
 
-```
+---
 
-- `200 OK` – User details returned
-- `404 Not Found` – User does not exist
+### List Users
+
+**GET** `/users`
+
+**Query Parameters:**
+
+- `page` (default: 1)
+- `page_size` (default: 10)
+- `order_by=id|name|role` (prefix `-` for descending)
+- `group` (filter by group ID)
+- `name` (keyword search)
+- `role` (filter by role)
+
+**Response:**
+
+```json
+{
+  "page": 1,
+  "page_size": 2,
+  "total_pages": 3,
+  "total_items": 5,
+  "items": [
+    // Same format as GET /users/{user_id}
+  ]
+}
+```
 
 ---
 
@@ -78,17 +116,35 @@ payload: a file
 
 **PATCH** `/users/{user_id}`
 
-**Payload:**
-
+```json
+{
+  "id": "12345678",
+  "name": "Alice J.",
+  "role": "ADMIN"
+}
 ```
 
+- ID must be one of the user's aliases; this means updating primary UWA ID.
+
+---
+
+### Manage Aliases
+
+**Add alias:**
+**POST** `/users/{user_id}/aliases`
+
+```json
+{ "id": "87654321" }
 ```
 
-**Responses:**
+**Remove alias:**
+**DELETE** `/users/{user_id}/aliases`
 
-- `200 OK` – User profile updated
-- `400 Bad Request` – Invalid input
-- `404 Not Found` – User not found
+```json
+{ "id": "87654321" }
+```
+
+- Primary UWA ID cannot be removed.
 
 ---
 
@@ -96,85 +152,91 @@ payload: a file
 
 **DELETE** `/users/{user_id}`
 
-**Responses:**
-
-- `200 OK` – User deleted
-- `404 Not Found` – User not found
-
----
-
-# 2. Gayathri
-
-### List All Users (with pagination & search)
-
-**GET** `/users`
-
-**Query Params:**
-
-- `page` (optional, number)
-- `search` (optional, string)
-
-**Responses:**
-
-- `200 OK` – List of users returned
-
 ---
 
 ### Batch Create Users
 
 **POST** `/users/batch`
 
-**Responses:**
+**Request:** File upload with `Name` and `UWA ID`.
 
-- `200 OK` – Users created
-- `400 Bad Request` – Invalid input
+**Rules:**
+
+- Ignore irrelevant columns.
+- Only create new users from `id` and `name`.
+- If ID exists and name mismatches → error.
+
+**Error format:**
+
+```json
+{
+  "errors": [{ "row": 1, "msg": "Name mismatch for UWA ID 87654321" }]
+}
+```
 
 ---
 
-# 3. Christina
+# 2. Groups
 
-### Create User Group
+### Create Group
 
 **POST** `/groups`
 
-**Payload:**
-
+```json
+{
+  "name": "Lab Safety Training Participants",
+  "description": "Group of users required to complete Lab Safety Training"
+}
 ```
 
-```
-
-**Responses:**
-
-- `200 OK` – Group created
-- `400 Bad Request` – Invalid input
+**Response:** Same as `GET /groups/{group_id}`.
 
 ---
 
-### Update User Group (name)
+### Get Single Group
+
+**GET** `/groups/{group_id}`
+
+```json
+{
+  "id": "a1b2c3d4-e5f6-7a8b-9c0d-123456abcdef",
+  "timestamp": "2025-08-01T10:15:30Z",
+  "name": "Lab Safety Training Participants",
+  "description": "Group of users required to complete Lab Safety Training"
+}
+```
+
+---
+
+### List All Groups
+
+**GET** `/groups`
+**Response:**
+
+```json
+[
+  // Same format as GET /groups/{group_id}
+]
+```
+
+---
+
+### Update Group
 
 **PATCH** `/groups/{group_id}`
 
-**Payload:**
-
+```json
+{
+  "name": "Updated Lab Safety Training Participants",
+  "description": "Updated description"
+}
 ```
-
-```
-
-**Responses:**
-
-- `200 OK` – Group updated
-- `404 Not Found` – Group not found
 
 ---
 
-### Delete User Group
+### Delete Group
 
 **DELETE** `/groups/{group_id}`
-
-**Responses:**
-
-- `200 OK` – Group deleted
-- `404 Not Found` – Group not found
 
 ---
 
@@ -182,266 +244,83 @@ payload: a file
 
 **POST** `/groups/{group_id}/users`
 
-**Responses:**
-
-- `200 OK` – Users added to group
-- `400 Bad Request` – Invalid input
-- `404 Not Found` – Group not found
-
----
-
-# 4. Dani
-
-### List All User Groups (with pagination & search)
-
-**GET** `/groups`
-
-**Query Params:**
-
-- `page` (optional, number)
-- `search` (optional, string)
-- `name` (string)
-- `search` (string)
-- `order_by` (appropriate fields - name/created_by/created_at)
-- `order_dir` (asc/desc)
-
-**Responses:**
-
-- `200 OK` – List of groups returned
+**Request:**
 
 ```json
-{
-  "page": 1,
-  "page_size": 20,
-  "total_pages": 3,
-  "total_items": 60,
-  "items": [{ "id": "g_1", "name": "Admins", "description": null, "created_at": "...", "updated_at": "..." }]
-}
+{ "id": "12345678" }
+```
+
+- Optional: accept a list for all-or-nothing transaction:
+
+```json
+[{ "id": "12345678" }, { "id": "87654321" }]
 ```
 
 ---
 
-### Get Single User Group (with members, pagination & search)
+### Show Trainings Assigned to a Group
 
-**GET** `/groups/{group_id}`
+**GET** `/groups/{group_id}/trainings`
 
-**Query Params:**
-
-- `page` (optional, number)
-- `search` (optional, string)
-- `search` (string)
-- `order_by` (appropriate fields - name/created_by/created_at)
-- `order_dir` (asc/desc)
-
-**Responses:**
-
-- `200 OK` – Group details with members returned
-- `404 Not Found` – Group not found - Group_id does not exist
+**Response:**
 
 ```json
-{
-  "group": { "id": "g_1", "name": "Admins", "description": null, "created_at": "...", "updated_at": "..." },
-  "members": {
-    "page": 1,
-    "page_size": 20,
-    "total_pages": 10,
-    "total_items": 200,
-    "items": [{ "id": "u_10", "email": "a@acme.com", "name": "Alex" }]
-  }
-}
+[
+  // Same format as GET /trainings/{training_id}
+]
 ```
-
-### Trainings - lists all the trainings
-
-**GET** `/trainings`
-
-**Query Params:**
-
-- `page` (optional, number)
-- `page_size` (number)
-- `name` (string) – filter by training name
-- `type` (string) – filter by training type
-- `order_by` (name|date|created_at|updated_at)
-- `order_dir` (asc|desc)
-- `search` (string) – free-text over name/type/description
-
-```json
-{
-  "page": 1,
-  "page_size": 10,
-  "total_pages": 5,
-  "total_items": 50,
-  "items": [
-    {
-      "id": "t_1",
-      "name": "Security 101",
-      "type": "video",
-      "date": "2025-06-01",
-      "created_at": "...",
-      "updated_at": "..."
-    }
-  ]
-}
-```
-
-- `200 OK` – Group details with members returned
-
-### Linking Training and groups
-
-Choose one style from below and stick to that.
-
-**Option A : Links trainings to a group**
-
-**POST** `/groups/{group_id}/trainings`
-
-**Payload**
-
-```json
-{ "training_ids": ["t_1", "t_2"] }
-```
-
-**Option B: Link groups to a training**
-
-**POST** `/trainings/{training_id}/groups`
-
-**Payload**
-
-```json
-{ "group_ids": ["g_1", "g_2"] }
-```
-
-**Responses**
-
-- `404 Not Found` – Group or training not found
-
-```json
-{ "error": { "code": "not_found", "message": "Group g_404 not found" } }
-```
-
-- `200 OK` – Trainings/groups linked
-
-```json
-{
-  "linked": ["t_1"],
-  "already_linked": ["t_2"],
-  "not_found": ["t_999"],
-  "target_not_found": false
-}
-```
-
-- `400 Bad Request` – Invalid payload
-
-```json
-{ "error": { "code": "bad_request", "message": "training_ids must be a non-empty array of strings" } }
-```
-
-**Notes**
-
-- Request is idempotent: repeating the same call won’t duplicate links.
-- If some referenced IDs don’t exist, they appear under not_found, but the
-  request still returns 200 if the target exists.
-
-### Unlinking Trainings and Groups
-
-**Option A**
-
-**DELETE** `/groups/{group_id}/trainings`
-
-```json
-{ "training_ids": ["t_1", "t_2"] }
-```
-
-**Option A**
-
-**DELETE** `/trainings/{training_id}/groups`
-
-```json
-{ "group_ids": ["g_1", "g_2"] }
-```
-
-- `200 OK` – Trainings/groups Unlinked
-
-```json
-{
-  "unlinked": ["t_1"],
-  "not_linked": ["t_2"],
-  "not_found": ["t_999"],
-  "target_not_found": false
-}
-```
-
-- `404 Not Found` – target group/training not found
-- `400 Bad Request` – invalid payload
-
-**Notes**
-
-- Missing IDs are ignored but shown in not_found.
-- Removing a non-existent link is a no-op and reported under not_linked.
 
 ---
 
-# 5. Wei
+# 3. Trainings
 
 ### Create Training
 
 **POST** `/trainings`
 
-**Payload:**
-if `type == "lms"`:
+**Payloads by type:**
+
+**LMS:**
 
 ```json
 {
-    "name": "string",
-    "expiry" : 0,
-    "type" ："lms",
-    "config": {
-        "course_id": "string",
-        "completance_score": 0 //Integer
-    }
+  "name": "Lab Safety Training",
+  "description": "Mandatory lab safety procedures",
+  "expiry": 365,
+  "type": "LMS",
+  "config": { "completance_score": 80 }
 }
 ```
 
-if `type == "trybooking"`:
+**TryBooking:**
 
 ```json
 {
-  "name": "string",
+  "name": "Orientation Session",
+  "description": "Initial onboarding session",
   "expiry": 0,
-  "type": "trybooking",
-  "config": {
-    "event_template_id": "string",
-    "required_attendance": true //Boolean
-  }
+  "type": "TRYBOOKING",
+  "config": {}
 }
 ```
 
-if `type == "external"`:
+**External:**
 
 ```json
 {
-  "name": "string",
+  "name": "Ethics Workshop",
+  "description": "External workshop on research ethics",
   "expiry": 0,
-  "type": "external",
+  "type": "EXTERNAL",
   "config": {
     "proof_fields": [
-      //custom field array
-      {
-        "key": "string", //field name
-        "label": "string", //UI present name
-        "input": "text", // text/number/date/file
-        "required": true //Boolean
-      }
+      /* To be decided later, can skip */
     ]
   }
 }
 ```
 
-**Responses:**
-
-- `201 Created` – Training created - Headers: `Location: /trainings/{training_id}`, Body: `training`
-- `400 Bad Request` – Invalid input
-- `409 Conflict` - Training name already exists
-- `422 Unprocessable Entity` - Validation errors (invalid course_id, etc.)
+**Response:** Same as `GET /trainings/{training_id}`.
 
 ---
 
@@ -449,22 +328,30 @@ if `type == "external"`:
 
 **GET** `/trainings/{training_id}`
 
-**Responses:**
-
-- `200 OK` – Training details returned
-
 ```json
 {
-    "id": 0， //Integer
-    "name": "string",
-    "expiry": 0,
-    "type": "lms | trybooking | external",
-    "config": { ... },
-    "created_at": "2025-09-01T00:00:00Z" //Timestamp
+  "id": "f9b8c3d1-1234-4abc-8def-9876543210ab",
+  "timestamp": "2025-09-01T08:00:00Z",
+  "name": "Lab Safety Training",
+  "description": "Mandatory lab safety procedures",
+  "expiry": 365,
+  "type": "LMS",
+  "config": { "completance_score": 80 }
 }
 ```
 
-- `404 Not Found` – Training not found
+---
+
+### List Trainings
+
+**GET** `/trainings`
+**Response:**
+
+```json
+[
+  // Same format as GET /trainings/{training_id}
+]
+```
 
 ---
 
@@ -472,23 +359,14 @@ if `type == "external"`:
 
 **PATCH** `/trainings/{training_id}`
 
-**Payload:**
-
 ```json
 {
-    "name": "string",
-    "expiry" : 0,
-    "type": "lms | trybooking | external",
-    "config": { ... }
+  "name": "Updated Lab Safety Training",
+  "description": "Updated description",
+  "expiry": 400,
+  "config": { "completance_score": 85 }
 }
 ```
-
-**Responses:**
-
-- `200 OK` – Training updated
-- `400 Bad Request` – Invalid input
-- `409 Conflict` – Training name already exists
-- `422 Unprocessable Entity` - Validation errors (invalid course_id, etc)
 
 ---
 
@@ -496,122 +374,34 @@ if `type == "external"`:
 
 **DELETE** `/trainings/{training_id}`
 
-**Responses:**
-
-- `204 No Content` – Training deleted
-- `404 Not Found` – Training not found
-
 ---
 
-# 6. Manas
+### Link/Unlink Training to Group
+
+**POST** `/trainings/{training_id}/groups`
+**DELETE** `/trainings/{training_id}/groups`
+
+**Request:**
+
+```json
+{ "id": "a1b2c3d4-e5f6-7a8b-9c0d-123456abcdef" }
+```
+
+- Optional: accept a list for all-or-nothing transaction:
+
+```json
+[{ "id": "a1b2c3d4-e5f6-7a8b-9c0d-123456abcdef" }, { "id": "e4da3b7f-bbce-4fcd-9a77-abcdef123456" }]
+```
+
+---
 
 ### Show Groups Assigned to a Training
 
 **GET** `/trainings/{training_id}/groups`
-
-**Responses:**
-
-- `200 OK` – Groups linked to training returned
-- `404 Not Found` – Training not found
-
----
-
-### Show Trainings Assigned to a User Group
-
-**GET** `/groups/{group_id}/trainings`
-
-**Responses:**
-
-- `200 OK` – Trainings linked to group returned
-- `404 Not Found` – Group not found
-
----
-
-# 7. Zhaodong
-
-### List All Trainings
-
-**GET** `/trainings`
-
-**Query Params:**
-
-- `page` (optional, number): current page
-- `page_size` (optional, number): number of items shown on each page
-- `name` (optional, string): filter by training name
-- `type` (optional, string): filter by training type
-- `order_by` (optional, `name` | `date`)
-
-**Responses:**
-
-- `200 OK` – Trainings returned
+**Response:**
 
 ```json
-{
-  "page": 1,
-  "total_pages": 5,
-  "total_items": 50,
-  "trainings": [ ... ]
-}
+[
+  // Same format as GET /groups/{group_id}
+]
 ```
-
----
-
-### Link Trainings to User Groups
-
-#### Option 1:
-
-**POST** `/trainings/{training_id}/groups`
-
-**Payload:**
-
-```json
-{ "group_ids": [1, 2] }
-```
-
-#### Option 2:
-
-**POST** `/groups/{group_id}/trainings`
-
-**Payload:**
-
-```json
-{ "training_ids": [1, 2] }
-```
-
-**Responses:**
-
-- `404 Not Found` – Group or training not found
-- `200 OK` – Trainings/groups linked
-- `400 Bad Request` – Invalid payload
-
-**Notes:**
-
-- If some of the trainings / groups specified in the payload cannot be found by id, they will just be ignored.
-
----
-
-### Unlink Trainings from User Groups
-
-**DELETE** `/trainings/{training_id}/groups`
-**Payload:**
-
-```json
-{ "group_ids": [1, 2] }
-```
-
-**DELETE** `/groups/{group_id}/trainings`
-**Payload:**
-
-```json
-{ "training_ids": [1, 2] }
-```
-
-**Responses:**
-
-- `404 Not Found` – Group or training not found
-- `200 OK` – Trainings/groups unlinked
-- `400 Bad Request` – Invalid payload
-
-**Notes:**
-
-- If some of the trainings / groups specified in the payload cannot be found by id, they will just be ignored.
