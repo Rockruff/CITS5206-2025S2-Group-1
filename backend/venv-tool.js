@@ -25,12 +25,7 @@ const run = (cmd, args) => {
 const mode = process.argv[2];
 shell.cd(backendDir);
 
-if (mode === "--format") {
-  // Format given Python files using black in venv
-  const black = venvTool("black");
-  const files = process.argv.slice(3);
-  if (files.length > 0) run(black, files);
-} else if (mode === "--init") {
+if (mode === "--init") {
   // Initialize virtual environment and install dependencies
   if (!shell.test("-d", venvDir)) {
     run(pythonCmd, ["-m", "venv", ".venv"]);

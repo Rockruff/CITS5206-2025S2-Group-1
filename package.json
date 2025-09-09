@@ -35,7 +35,7 @@
       "prettier --write"
     ],
     "*.py": [
-      "node backend/venv-tool.js --format"
+      "node backend/venv-tool.js --python -m black -l 100"
     ]
   }
 }
