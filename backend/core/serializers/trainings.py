@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from core.models import Training
+from core.models import UserGroup, Training
+from django.db import transaction
 
 
 class TrainingSerializer(serializers.ModelSerializer):
@@ -60,3 +61,22 @@ class TrainingUpdateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("completance_score must be a number")
 
         return value
+
+
+class TrainingGroupsPatchSerializer(serializers.Serializer):
+    add = serializers.ListField(child=serializers.UUIDField(), required=True)
+    remove = serializers.ListField(child=serializers.UUIDField(), required=True)
+
+    def save(self):
+        training = self.instance
+
+        add_ids = self.validated_data["add"]
+        remove_ids = self.validated_data["remove"]
+
+        with transaction.atomic():
+            existing_add_groups = UserGroup.objects.filter(id__in=add_ids)
+            training.groups.add(*existing_add_groups)
+            existing_remove_groups = UserGroup.objects.filter(id__in=remove_ids)
+            training.groups.remove(*existing_remove_groups)
+
+        return training
