@@ -33,22 +33,20 @@ class UserViewSet(viewsets.GenericViewSet):
         return Response(UserSerializer(user).data)
 
     # GET /users/{id}
-    def retrieve(self, request, pk=None):
+    def retrieve(self, request):
         user = self.get_object()
         return Response(UserSerializer(user).data)
 
     # PATCH /users/{id}
-    def partial_update(self, request, pk=None):
+    def partial_update(self, request):
         user = self.get_object()
-        serializer = UserUpdateSerializer(
-            instance=user, data=request.data, partial=True
-        )
+        serializer = UserUpdateSerializer(instance=user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(UserSerializer(user).data)
 
     # DELETE /users/{id}
-    def destroy(self, request, pk=None):
+    def destroy(self, request):
         user = self.get_object()
         user.delete()
         return Response()
@@ -58,12 +56,10 @@ class UserViewSet(viewsets.GenericViewSet):
     # Since I want to use the same endpoint for both adding and removing aliases,
     # I will check the request method to determine the action.
     @action(detail=True, methods=["post", "delete"], url_path="aliases")
-    def add_alias(self, request, pk=None):
+    def add_alias(self, request):
         user = self.get_object()
         serializer_class = (
-            UserAliasCreateSerializer
-            if request.method == "POST"
-            else UserAliasDeleteSerializer
+            UserAliasCreateSerializer if request.method == "POST" else UserAliasDeleteSerializer
         )
         serializer = serializer_class(instance=user, data=request.data)
         serializer.is_valid(raise_exception=True)

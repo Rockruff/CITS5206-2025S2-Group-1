@@ -29,12 +29,12 @@ class TrainingViewSet(viewsets.GenericViewSet):
         return Response(TrainingSerializer(training).data)
 
     # GET /trainings/{id}
-    def retrieve(self, request, pk=None):
+    def retrieve(self, request):
         training = self.get_object()
         return Response(TrainingSerializer(training).data)
 
     # PATCH /trainings/{id}
-    def partial_update(self, request, pk=None):
+    def partial_update(self, request):
         training = self.get_object()
         serializer = TrainingUpdateSerializer(instance=training, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -42,7 +42,7 @@ class TrainingViewSet(viewsets.GenericViewSet):
         return Response(TrainingSerializer(training).data)
 
     # DELETE /trainings/{id}
-    def destroy(self, request, pk=None):
+    def destroy(self, request):
         training = self.get_object()
         training.delete()
         return Response()
