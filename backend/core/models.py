@@ -1,6 +1,6 @@
 from datetime import timedelta, timezone
 from django.db import models
-from django.core.validators import RegexValidator
+from django.core.validators import RegexValidator, MinValueValidator
 from django.contrib.auth.models import AbstractBaseUser
 from uuid import uuid4
 
@@ -65,7 +65,7 @@ class Training(models.Model):
     # Training Type
     type = models.CharField(max_length=15, choices=TYPE_CHOICES)
     # Training Record Expiry (Number of Days, 0 == No Expiry)
-    expiry = models.IntegerField(default=0)
+    expiry = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     # Dynamic Configuration Object
     config = models.JSONField(default=dict)
     # Associated Groups
