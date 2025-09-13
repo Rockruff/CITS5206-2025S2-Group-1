@@ -1,9 +1,12 @@
+
 from django.db import transaction
 from django.db.models import Q
+from django.core.paginator import Paginator, EmptyPage
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
 from .models import AppUser, UserAlias, UserGroup, Training, TrainingAssignment
 from .serializers import (
@@ -30,241 +33,122 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserSerializer
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        q = self.request.query_params.get("q")
-        if q:
+        qs = AppUser.objects.all()
+
+        # --- filters/search ---
+        q_name = self.request.query_params.get("name") or self.request.query_params.get("search")
+        if q_name:
             qs = qs.filter(
-                Q(full_name__icontains=q)
-                | Q(uwa_id__icontains=q)
-                | Q(username__icontains=q)
-            )
+                Q(name__icontains=q_name)
+                | Q(aliases__uwa_id__icontains=q_name)
+            ).distinct()
+
+        role = self.request.query_params.get("role")
+        if role:
+            qs = qs.filter(role=role.upper())
+
+        group_id = self.request.query_params.get("group")
+        if group_id:
+            qs = qs.filter(user_groups__id=group_id)
+
+        # --- ordering ---
+        order_by = self.request.query_params.get("order_by", "name")
+        # map 'name' to model field
+        if order_by.lstrip("-") not in {"id", "name", "role"}:
+            order_by = "name"
+        qs = qs.order_by(order_by)
         return qs
+
+    # Override list to provide the API’s page structure
+    def list(self, request, *args, **kwargs):
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("page_size", 10))
+        qs = self.get_queryset()
+        paginator = Paginator(qs, page_size)
+        try:
+            page_obj = paginator.page(page)
+        except EmptyPage:
+            page_obj = paginator.page(paginator.num_pages or 1)
+
+        data = UserSerializer(page_obj.object_list, many=True).data
+        return Response({
+            "page": page,
+            "page_size": page_size,
+            "total_pages": paginator.num_pages,
+            "total_items": paginator.count,
+            "items": data,
+        })
 
     @action(
         detail=False,
-        methods=["get"],
-        permission_classes=[IsAuthenticated],
-        url_path="me",
-    )
-    def me(self, request):
-        user = request.user
-        return Response(UserSerializer(user).data)
-
-    @action(
-        detail=False, methods=["post"], permission_classes=[IsAdmin], url_path="batch"
+        methods=["post"],
+        permission_classes=[IsAdmin],
+        url_path="batch",
+        parser_classes=[JSONParser, MultiPartParser, FormParser],
     )
     def batch(self, request):
-        f = request.FILES.get("file")
-        if not f:
-            return Response({"detail": "Upload a file with key 'file'."}, status=400)
-        created = skipped = 0
-        with transaction.atomic():
+        """Batch create users.
+
+        Accepts either:
+          - JSON body: { "users": [ { "id": "...", "name": "..." }, ... ] }
+          - File upload (CSV/XLSX) under key 'file' – parsed by iter_user_rows()
+        Rules:
+          - Ignore irrelevant columns
+          - Only create new users from id and name
+          - If ID exists and name mismatches -> error
+        """
+        created = 0
+        errors = []
+
+        if request.FILES.get("file"):
+            f = request.FILES["file"]
             try:
-                for row in iter_user_rows(f):
-                    name, uwa_id = row["name"], row["uwa_id"]
-                    # Use the single-user serializer
-                    serializer = UserCreateSerializer({"name": name, "uwa_id": uwa_id})
-                    if serializer.is_valid():
-                        serializer.save()  # this handles creating AppUser + UserAlias
-                        created += 1
+                for idx, row in enumerate(iter_user_rows(f), start=1):
+                    payload = {"uwa_id": row.get("uwa_id") or row.get("id"), "name": row.get("name")}
+                    ser = UserCreateSerializer(data=payload)
+                    if ser.is_valid():
+                        user = ser.save()
+                        # if alias already existed and name matched, treat as no-op
+                        if user and UserAlias.objects.filter(uwa_id=payload["uwa_id"]).exists():
+                            created += 1
                     else:
-                        skipped += 1
+                        errors.append({"row": idx, "msg": ser.errors.get("__all__", [str(ser.errors)])[0]})
             except Exception as e:
                 return Response({"detail": f"Import failed: {e}"}, status=400)
-        return Response({"created": created, "skipped": skipped}, status=201)
+        else:
+            users = request.data.get("users", [])
+            if not isinstance(users, list) or not users:
+                return Response({"detail": "Provide users[] or upload file"}, status=400)
+            for idx, u in enumerate(users, start=1):
+                payload = {"uwa_id": u.get("id"), "name": u.get("name")}
+                ser = UserCreateSerializer(data=payload)
+                if ser.is_valid():
+                    ser.save()
+                    created += 1
+                else:
+                    errors.append({"row": idx, "msg": ser.errors.get("__all__", [str(ser.errors)])[0]})
 
-    @action(
-        detail=True,
-        methods=["patch"],
-        permission_classes=[IsAdmin],
-        url_path="set-role",
-    )
+        status_code = 201 if created and not errors else 200
+        return Response({"created": created, "errors": errors}, status=status_code)
+
+    @action(detail=True, methods=["patch"], permission_classes=[IsAdmin], url_path="set-role")
     def set_role(self, request, pk=None):
-        u = self.get_object()
-        s = UserRoleUpdateSerializer(u, data=request.data, partial=True)
-        s.is_valid(raise_exception=True)
-        s.save()
-        return Response(UserSerializer(u).data)
-
-    @action(
-        detail=False, methods=["post"], permission_classes=[IsAdmin], url_path="merge"
-    )
-    def merge(self, request):
-        src_uwa = request.data.get("from_uwa_id")
-        dst_uwa = request.data.get("to_uwa_id")
-        if not (src_uwa and dst_uwa):
-            return Response(
-                {"detail": "from_uwa_id and to_uwa_id required"}, status=400
-            )
-        if src_uwa == dst_uwa:
-            return Response({"detail": "No-op"}, status=200)
-
-        def resolve(uwa):
-            try:
-                return (
-                    UserAlias.objects.select_related("user").get(alias_uwa_id=uwa).user
-                )
-            except UserAlias.DoesNotExist:
-                return AppUser.objects.get(uwa_id=uwa)
-
-        with transaction.atomic():
-            try:
-                src = resolve(src_uwa)
-                dst = resolve(dst_uwa)
-            except AppUser.DoesNotExist:
-                return Response({"detail": "One or both users not found"}, status=404)
-            if src.id == dst.id:
-                return Response({"detail": "Already same"}, status=200)
-            UserAlias.objects.filter(user=src).update(user=dst)
-            # NOTE: if other tables later FK AppUser, update those FKs here
-            src.delete()
-        return Response({"detail": "Merged", "survivor": UserSerializer(dst).data})
+        user = self.get_object()
+        ser = UserRoleUpdateSerializer(user, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(UserSerializer(user).data)
 
 
-# ── User Groups ─────────────────────────────────────────────────────────
+# ── Groups ──────────────────────────────────────────────────────────────
 class UserGroupViewSet(viewsets.ModelViewSet):
-    queryset = UserGroup.objects.all().order_by("id")
+    queryset = UserGroup.objects.all().order_by("name")
     serializer_class = UserGroupSerializer
     permission_classes = [ReadOnlyOrAdmin]
-
-    def get_queryset(self):
-        q = self.request.query_params.get("q")
-        return (
-            super().get_queryset().filter(name__icontains=q)
-            if q
-            else super().get_queryset()
-        )
-
-    @action(
-        detail=True,
-        methods=["get"],
-        permission_classes=[IsAuthenticated],
-        url_path="members",
-    )
-    def members(self, request, pk=None):
-        g = self.get_object()
-        q = request.query_params.get("q")
-        qs = (
-            g.members.filter(Q(full_name__icontains=q) | Q(uwa_id__icontains=q))
-            if q
-            else g.members.all()
-        )
-        page = self.paginate_queryset(qs)
-        return self.get_paginated_response(UserSerializer(page, many=True).data)
-
-    @action(
-        detail=True,
-        methods=["post"],
-        permission_classes=[IsAdmin],
-        url_path="members:add",
-    )
-    def members_add(self, request, pk=None):
-        g = self.get_object()
-        ids = request.data.get("user_ids", [])
-        if not isinstance(ids, list) or not ids:
-            return Response({"detail": "user_ids must be a non-empty list"}, status=400)
-        added = []
-        for ident in ids:
-            user = None
-            if isinstance(ident, int):
-                user = AppUser.objects.filter(id=ident).first()
-            else:
-                user = AppUser.objects.filter(uwa_id=ident).first()
-                if not user:
-                    user = AppUser.objects.create(
-                        username=ident, full_name=ident, uwa_id=ident
-                    )
-                    UserAlias.objects.get_or_create(
-                        alias_uwa_id=ident, defaults={"user": user}
-                    )
-            if user:
-                g.members.add(user)
-                added.append(user.id)
-        return Response({"added": added})
-
-    @action(
-        detail=True,
-        methods=["post"],
-        permission_classes=[IsAdmin],
-        url_path="members:remove",
-    )
-    def members_remove(self, request, pk=None):
-        g = self.get_object()
-        ids = request.data.get("user_ids", [])
-        if not isinstance(ids, list) or not ids:
-            return Response({"detail": "user_ids must be a non-empty list"}, status=400)
-        removed = []
-        for ident in ids:
-            user = (
-                AppUser.objects.filter(id=ident).first()
-                if isinstance(ident, int)
-                else AppUser.objects.filter(uwa_id=ident).first()
-            )
-            if user:
-                g.members.remove(user)
-                removed.append(user.id)
-        return Response({"removed": removed})
 
 
 # ── Trainings ───────────────────────────────────────────────────────────
 class TrainingViewSet(viewsets.ModelViewSet):
-    queryset = Training.objects.all().order_by("id")
+    queryset = Training.objects.all().order_by("name")
     serializer_class = TrainingSerializer
     permission_classes = [ReadOnlyOrAdmin]
-
-    def get_queryset(self):
-        q = self.request.query_params.get("q")
-        return (
-            super().get_queryset().filter(name__icontains=q)
-            if q
-            else super().get_queryset()
-        )
-
-    @action(
-        detail=True,
-        methods=["get"],
-        permission_classes=[IsAuthenticated],
-        url_path="groups",
-    )
-    def groups(self, request, pk=None):
-        tr = self.get_object()
-        page = self.paginate_queryset(tr.groups.all().order_by("name"))
-        return self.get_paginated_response(UserGroupSerializer(page, many=True).data)
-
-    @action(
-        detail=True,
-        methods=["post"],
-        permission_classes=[IsAdmin],
-        url_path="groups:link",
-    )
-    def groups_link(self, request, pk=None):
-        tr = self.get_object()
-        ids = request.data.get("group_ids", [])
-        if not isinstance(ids, list) or not ids:
-            return Response(
-                {"detail": "group_ids must be a non-empty list"}, status=400
-            )
-        linked = []
-        for gid in ids:
-            grp = UserGroup.objects.filter(id=gid).first()
-            if grp:
-                TrainingAssignment.objects.get_or_create(training=tr, group=grp)
-                linked.append(grp.id)
-        return Response({"linked": linked})
-
-    @action(
-        detail=True,
-        methods=["post"],
-        permission_classes=[IsAdmin],
-        url_path="groups:unlink",
-    )
-    def groups_unlink(self, request, pk=None):
-        tr = self.get_object()
-        ids = request.data.get("group_ids", [])
-        if not isinstance(ids, list) or not ids:
-            return Response(
-                {"detail": "group_ids must be a non-empty list"}, status=400
-            )
-        for gid in ids:
-            TrainingAssignment.objects.filter(training=tr, group_id=gid).delete()
-        return Response({"unlinked": ids})
