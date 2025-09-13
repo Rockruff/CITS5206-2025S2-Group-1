@@ -1,3 +1,4 @@
+
 from django.db import transaction
 from rest_framework import serializers
 from .models import AppUser, UserAlias, UserGroup, Training
@@ -5,7 +6,7 @@ from .models import AppUser, UserAlias, UserGroup, Training
 
 # ── Users ───────────────────────────────────────────────────────────────
 class UserSerializer(serializers.ModelSerializer):
-    # Expose the read-only property
+    # Expose the read-only property defined on the model (list of alias IDs)
     uwa_ids = serializers.ReadOnlyField()
 
     class Meta:
@@ -15,27 +16,38 @@ class UserSerializer(serializers.ModelSerializer):
             "name",
             "role",
             "uwa_ids",
-        ]  # note: renamed from uwa_ids to uwa_id
-        read_only_fields = ["id", "role", "uwa_ids"]
+        ]
 
 
-class UserCreateSerializer(serializers.ModelSerializer):
-    uwa_id = serializers.CharField(
-        write_only=True
-    )  # still accepts UWA ID when creating
+class UserCreateSerializer(serializers.Serializer):
+    # For batch/single create from external sources
+    id = serializers.CharField(source="uwa_id", max_length=32)
+    name = serializers.CharField(max_length=160)
 
-    class Meta:
-        model = AppUser
-        fields = ["id", "name", "role", "uwa_id"]
-        read_only_fields = ["id", "role"]
+    def validate(self, attrs):
+        uwa_id = attrs.get("uwa_id")
+        name = attrs.get("name")
+
+        # If a user with this alias exists, ensure the name matches the canonical user name
+        alias = UserAlias.objects.filter(uwa_id=uwa_id).select_related("user").first()
+        if alias:
+            if alias.user.name != name:
+                raise serializers.ValidationError(f"Name mismatch for UWA ID {uwa_id}")
+            # Otherwise it's a duplicate row for an already-linked alias -> ignore in view
+        return attrs
 
     @transaction.atomic
-    def create(self, data):
-        uwa_id = data.pop("uwa_id")
-        if UserAlias.objects.filter(uwa_id=uwa_id).exists():
-            raise serializers.ValidationError({"uwa_id": "UWA ID already exists"})
+    def create(self, validated_data):
+        uwa_id = validated_data["uwa_id"]
+        name = validated_data["name"]
 
-        user = AppUser.objects.create(**data)
+        alias = UserAlias.objects.filter(uwa_id=uwa_id).select_related("user").first()
+        if alias:
+            # Already exists and name matched in validate(): return the existing user
+            return alias.user
+
+        # Create a new canonical AppUser and its first alias
+        user = AppUser.objects.create(name=name)  # role defaults to VIEWER
         UserAlias.objects.create(uwa_id=uwa_id, user=user)
         return user
 
