@@ -2,12 +2,13 @@
 import os
 import sys
 
-# Add backend folder to Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), "backend"))
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hsw_backend.settings')
+    # Add backend folder to Python path
+    sys.path.append(os.path.join(os.path.dirname(__file__), "backend"))
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hsw_backend.settings")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
@@ -18,5 +19,6 @@ def main():
         ) from exc
     execute_from_command_line(sys.argv)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
