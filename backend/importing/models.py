@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.contrib.postgres.indexes import GinIndex
+from django.contrib.auth.models import User
 
 
 class BatchStatus(models.TextChoices):
@@ -93,3 +94,10 @@ class ImportRow(models.Model):
 
     def __str__(self):
         return f"Batch {self.batch_id} Row {self.row_number}"
+
+class UserGroup(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    users = models.ManyToManyField(User, related_name="user_groups", blank=True)
+
+    def __str__(self):
+        return self.name
