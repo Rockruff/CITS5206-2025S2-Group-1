@@ -51,9 +51,9 @@ export default function UserSelect({
           <ChevronsUpDownIcon className="opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-        <Command>
-          <div className="flex h-9 items-center gap-2 border-b px-3">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" onWheel={(e) => e.stopPropagation()}>
+        <Command className="max-h-[40vh]">
+          <div className="flex h-9 flex-none items-center gap-2 border-b px-3">
             <SearchIcon className="size-4 shrink-0 opacity-50" />
             <input
               className="w-full bg-transparent text-sm outline-hidden"
