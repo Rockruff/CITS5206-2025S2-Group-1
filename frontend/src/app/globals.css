@@ -1,40 +1,79 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @theme {
   --color-primary: #27348b;
   --color-on-primary: white;
   --color-secondary: #e2b600;
   --color-on-secondary: var(--color-primary);
+}
 
-  --color-background: var(--color-neutral-50);
-  --color-on-background: black;
-  --color-foreground: white;
-  --color-on-foreground: black;
+/* layout-related configuration */
+@theme {
+  --z-header: 10;
+  --z-sidebar: 5;
+  --z-popup: 15;
 
-  --spacing-header-height: calc(var(--spacing) * 16);
-  --spacing-sidebar-width: calc(var(--spacing) * 60);
-  --spacing-sidebar-height: calc(100vh - var(--spacing-header-height));
+  --h-header: calc(var(--spacing) * 16);
+  --w-sidebar: calc(var(--spacing) * 60);
+  --h-sidebar: calc(100vh - var(--h-header));
+}
+
+@utility bg-* {
+  --bg: --value(--color-*);
+  background: var(--bg);
+  color: lch(from var(--bg) round((100 - l), 100) 0 0);
 }
 
 @utility cotain-strict {
   contain: strict;
 }
 
-@custom-variant hocus {
-  &:hover,
-  &:focus {
-    @slot;
-  }
-}
-
 @custom-variant hoctive {
   &:hover,
-  &:focus,
+  &:focus-visible,
   &:active {
     @slot;
   }
 }
 
-body {
-  @apply bg-background text-black;
+:root {
+  --radius: 0.65rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  --primary: #27348b;
+  --primary-foreground: oklch(0.97 0.014 254.604);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+
+  --accent: color-mix(in srgb, var(--primary) 10%, transparent 90%);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: color-mix(in srgb, var(--primary) 60%, transparent 40%);
+
+  /* Don't know what are these, seems to be unused */
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-primary: oklch(0.623 0.214 259.815);
+  --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
+  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.623 0.214 259.815);
 }
+
+@import "./shadcn.css";

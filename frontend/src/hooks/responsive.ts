@@ -17,7 +17,7 @@ const Queries = {
 
 type BreakPointType = keyof typeof Queries;
 
-export default function useResponsive(size: BreakPointType) {
+export function useResponsive(size: BreakPointType) {
   const [isMatch, setIsMatch] = useState<boolean | undefined>(undefined);
 
   useLayoutEffect(() => {

@@ -59,20 +59,25 @@ class UserViewSet(viewsets.GenericViewSet):
         if role:
             qs = qs.filter(role=role)
 
+        id_kw = request.query_params.get("id")
+        if id_kw:
+            qs = qs.filter(aliases__id__icontains=id_kw).distinct()
+
         name_kw = request.query_params.get("name")
         if name_kw:
-            qs = qs.filter(name__icontains=name_kw)
+            keywords = name_kw.split()
+            for kw in keywords:
+                qs = qs.filter(name__icontains=kw)
 
         group_id = request.query_params.get("group")
         if group_id:
             qs = qs.filter(groups__id=group_id)
 
         # Ordering
-        order_by = request.query_params.get("order_by")
-        if order_by:
-            if order_by not in {"id", "-id", "name", "-name", "role", "-role"}:
-                return Response({"error": "Invalid order_by field"}, status=400)
-            qs = qs.order_by(order_by)
+        order_by = request.query_params.get("order_by", "id")
+        if order_by not in {"id", "-id", "name", "-name", "role", "-role"}:
+            return Response({"error": "Invalid order_by field"}, status=400)
+        qs = qs.order_by(order_by)
 
         # Pagination
         try:

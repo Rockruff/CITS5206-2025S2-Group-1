@@ -1,53 +1,77 @@
 "use client";
 
-import { BookOpenText, ChartSpline, CircleGauge, FolderDown, LogOut, Users } from "lucide-react";
-import Link from "next/link";
+import { BookOpenText, ChartSpline, CircleGauge, FolderDown, LogOut, Menu, Users } from "lucide-react";
 import { createContext, useContext, useState } from "react";
 
-import Transition from "@/components/transition";
-import useResponsive from "@/hooks/responsive";
+import { ButtonIconOnly, ButtonText } from "@/components/common/button";
+import Transition from "@/components/common/transition";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useResponsive } from "@/hooks/responsive";
+import { useScrollLock } from "@/hooks/scroll-lock";
 
 function SidebarContent() {
+  const { isMobileMode, setIsMobileSidebarOpen } = useSidebar();
+  const closeMobileSidebar = () => isMobileMode && setIsMobileSidebarOpen(false);
+
   return (
-    <div className="bg-primary text-on-primary w-sidebar-width h-sidebar-height flex flex-col">
+    <div className="bg-primary text-on-primary flex h-[var(--h-sidebar)] w-[var(--w-sidebar)] flex-col">
       <div className="flex-1 overflow-scroll border-y border-current/10">
         <nav className="flex flex-col gap-4 p-4">
           <div className="flex flex-col gap-1">
             <h2 className="text-xs/6 uppercase opacity-80">Main</h2>
-            <Link href="/dashboard" className="flex items-center gap-3 rounded px-3 py-2 hover:bg-current/10">
-              <CircleGauge className="size-4" />
-              <span>Dashboard</span>
-            </Link>
-            <Link href="/dashboard/users" className="flex items-center gap-3 rounded px-3 py-2 hover:bg-current/10">
-              <Users className="size-4" />
-              <span>Users</span>
-            </Link>
-            <Link href="/dashboard/trainings" className="flex items-center gap-3 rounded px-3 py-2 hover:bg-current/10">
-              <BookOpenText className="size-4" />
-              <span>Training Programs</span>
-            </Link>
+            <ButtonText href="/dashboard" icon={CircleGauge} onClick={closeMobileSidebar}>
+              Dashboard
+            </ButtonText>
+            <ButtonText href="/dashboard/users" icon={Users} onClick={closeMobileSidebar}>
+              Users
+            </ButtonText>
+            <ButtonText href="/dashboard/trainings" icon={BookOpenText} onClick={closeMobileSidebar}>
+              Training Programs
+            </ButtonText>
           </div>
           <div className="flex flex-col gap-1">
             <h2 className="text-xs/6 uppercase opacity-80">Reports</h2>
-            <Link href="/dashboard/analytics" className="flex items-center gap-3 rounded px-3 py-2 hover:bg-current/10">
-              <ChartSpline className="size-4" />
-              <span>Analytics</span>
-            </Link>
-            <Link
-              href="/dashboard/export-data"
-              className="flex items-center gap-3 rounded px-3 py-2 hover:bg-current/10"
-            >
-              <FolderDown className="size-4" />
-              <span>Export Data</span>
-            </Link>
+            <ButtonText href="/dashboard/analytics" icon={ChartSpline} onClick={closeMobileSidebar}>
+              Analytics
+            </ButtonText>
+            <ButtonText href="/dashboard/export-data" icon={FolderDown} onClick={closeMobileSidebar}>
+              Export Data
+            </ButtonText>
           </div>
 
           <div className="flex flex-col gap-1">
             <h2 className="text-xs/6 uppercase opacity-80">Account</h2>
-            <Link href="/logout" className="flex items-center gap-3 rounded px-3 py-2 hover:bg-current/10">
-              <LogOut className="size-4" />
-              <span>Sign Out</span>
-            </Link>
+
+            <Dialog>
+              <DialogTrigger asChild>
+                <ButtonText icon={LogOut} onClick={closeMobileSidebar}>
+                  Log Out
+                </ButtonText>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Log out</DialogTitle>
+                </DialogHeader>
+                <div>Are you sure you want to log out?</div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="ghost">
+                      No
+                    </Button>
+                  </DialogClose>
+                  <Button>Yes</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </nav>
       </div>
@@ -66,11 +90,13 @@ function SidebarContent() {
   );
 }
 
-interface SidebarContextType {
+type SidebarContextType = {
+  isMobileMode: boolean | undefined;
   isMobileSidebarOpen: boolean;
+  setIsMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isDesktopSidebarOpen: boolean;
-  toggleSidebar: () => void;
-}
+  setIsDesktopSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
+};
 
 const SidebarContext = createContext<SidebarContextType | null>(null);
 
@@ -81,21 +107,18 @@ function useSidebar() {
 }
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
+  const isMobileMode = useResponsive("max-md");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState<boolean>(true);
-  const isDesktopMode = useResponsive("md");
-
-  const toggleSidebar = () => {
-    const setIsOpen = isDesktopMode ? setIsDesktopSidebarOpen : setIsMobileSidebarOpen;
-    setIsOpen((prev) => !prev);
-  };
 
   return (
     <SidebarContext.Provider
       value={{
+        isMobileMode,
         isMobileSidebarOpen,
+        setIsMobileSidebarOpen,
         isDesktopSidebarOpen,
-        toggleSidebar,
+        setIsDesktopSidebarOpen,
       }}
     >
       {children}
@@ -103,74 +126,72 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function SidebarToggle({ className, children }: { className: string; children: React.ReactNode }) {
-  const { toggleSidebar } = useSidebar();
-  return (
-    <button className={className} onClick={toggleSidebar}>
-      {children}
-    </button>
-  );
+export function SidebarToggle({ className }: { className: string }) {
+  const { isMobileMode, setIsMobileSidebarOpen, setIsDesktopSidebarOpen } = useSidebar();
+  const setIsOpen = isMobileMode ? setIsMobileSidebarOpen : setIsDesktopSidebarOpen;
+  return <ButtonIconOnly icon={Menu} className={className} onClick={() => setIsOpen((prev) => !prev)} />;
 }
 
-export default function Sidebar({
-  className,
-  type,
-  before,
-  start,
-  end,
-}: {
-  className: string;
-  type: string;
-  before: string;
-  start: string;
-  end: string;
-}) {
-  const isDesktopMode = useResponsive("md");
-  const { isMobileSidebarOpen, isDesktopSidebarOpen } = useSidebar();
+function Sidebar() {
+  const { isMobileMode, isMobileSidebarOpen, setIsMobileSidebarOpen, isDesktopSidebarOpen } = useSidebar();
 
-  if (
-    isDesktopMode === undefined || // media query result unknown yet (SSR)
-    isDesktopMode // is indeed desktop mode
-  ) {
+  // Prevent body scroll if mobile sidebar is shown
+  useScrollLock(!!isMobileMode && isMobileSidebarOpen);
+
+  // media query result unknown yet due to SSR (isMobileMode === undefined)
+  // or is indeed not mobile mode (isMobileMode === false)
+  if (!isMobileMode) {
     return (
-      <div className="max-md:hidden md:contents">
+      <aside className="max-md:hidden md:contents">
         <Transition
           key="desktop-sidebar"
           show={isDesktopSidebarOpen}
-          className={className}
-          type={type}
-          before={before}
-          start={start}
-          end={end}
+          className="cotain-strict h-[var(--h-sidebar)]"
+          type="transition-[width]"
+          before="hidden"
+          start="w-0"
+          end="w-[var(--w-sidebar)]"
         >
           <SidebarContent />
         </Transition>
-      </div>
+      </aside>
     );
   }
 
   return (
-    <div className="max-md:contents md:hidden">
+    <aside className="max-md:contents md:hidden">
       <Transition
         key="mobile-sidebar-overlay"
         show={isMobileSidebarOpen}
-        className="fixed inset-0 z-5 bg-black/50"
-        type="transition-[opacity,backdrop-filter]"
+        className="fixed z-[var(--z-sidebar)] h-[var(--h-sidebar)] w-screen bg-black"
+        type="transition-[opacity]"
         before="hidden"
         start="opacity-0"
-        end="backdrop-blur-sm"
+        end="opacity-50"
+        onClick={() => setIsMobileSidebarOpen(false)}
       />
       <Transition
         key="mobile-sidebar"
         show={isMobileSidebarOpen}
-        className={className}
-        type={type}
-        before={before}
-        start={start}
-        end={end}
+        className="fixed z-[var(--z-sidebar)] h-[var(--h-sidebar)] contain-strict"
+        type="transition-[width]"
+        before="hidden"
+        start="w-0"
+        end="w-[var(--w-sidebar)]"
       >
         <SidebarContent />
       </Transition>
+    </aside>
+  );
+}
+
+export default function WithSidebar({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="max-md:contents md:flex">
+      <Sidebar />
+      <main className="md:h-[var(--h-sidebar)] md:flex-1 md:overflow-y-auto">
+        <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-8">{children}</div>
+      </main>
     </div>
   );
 }
