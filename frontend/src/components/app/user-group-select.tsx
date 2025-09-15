@@ -10,24 +10,21 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Selection } from "@/hooks/selection";
 import { cn } from "@/lib/utils";
 
-const renderItem = (userGroup: UserGroup) => {
-  return <span className="truncate">{userGroup.name}</span>;
-};
+const renderItem = (userGroup: UserGroup) => <span className="truncate">{userGroup.name}</span>;
 
 export default function UserGroupSelect({
   selection,
   className = "w-64",
 }: {
   selection: Selection<UserGroup>;
-  className?: string; // should be used to set width only
+  className?: string;
 }) {
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const { data, error, isLoading } = useGroups();
+  const { data: groups = [], isLoading } = useGroups();
 
   const [open, setOpen] = useState(false);
-  const candidateItems = data;
-  const unSelectedItems = candidateItems.filter((item) => !selection.has(item));
+  const unSelectedItems = groups.filter((item) => !selection.has(item));
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -46,7 +43,7 @@ export default function UserGroupSelect({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search..."
-            ></input>
+            />
           </div>
           <CommandList>
             {selection.length > 0 && (
