@@ -31,7 +31,7 @@ class TrainingViewSet(viewsets.GenericViewSet):
         return Response(TrainingSerializer(training).data)
 
     # GET /trainings/{id}
-    def retrieve(self, request):
+    def retrieve(self, request, *args, **kwargs):
         training = self.get_object()
         return Response(TrainingSerializer(training).data)
 
@@ -42,7 +42,7 @@ class TrainingViewSet(viewsets.GenericViewSet):
         return Response(serializer.data)
 
     # PATCH /trainings/{id}
-    def partial_update(self, request):
+    def partial_update(self, request, *args, **kwargs):
         training = self.get_object()
         serializer = TrainingUpdateSerializer(instance=training, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -50,14 +50,14 @@ class TrainingViewSet(viewsets.GenericViewSet):
         return Response(TrainingSerializer(training).data)
 
     # DELETE /trainings/{id}
-    def destroy(self, request):
+    def destroy(self, request, *args, **kwargs):
         training = self.get_object()
         training.delete()
         return Response()
 
     # PATCH /trainings/{id}/groups
     @action(detail=True, methods=["patch"], url_path="groups")
-    def manage_groups(self, request):
+    def manage_groups(self, request, *args, **kwargs):
         training = self.get_object()
         serializer = TrainingGroupsPatchSerializer(instance=training, data=request.data)
         serializer.is_valid(raise_exception=True)
