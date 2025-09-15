@@ -10,6 +10,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from core.models import User, UserAlias
+from core.models import UserGroup
 from core.serializers.users import (
     UserSerializer,
     UserCreateSerializer,
@@ -116,6 +117,26 @@ class UserViewSet(viewsets.GenericViewSet):
         user = self.get_object()
         user.delete()
         return Response()
+
+    @action(detail=True, methods=["put"], url_path="groups")
+    def set_groups(self, request, *args, **kwargs):
+        """
+        Replace this user's group memberships with the given list of group UUIDs.
+        Body: { "groups": ["<uuid>", ...] }
+        """
+        user = self.get_object()
+        group_ids = request.data.get("groups", [])
+        if not isinstance(group_ids, list):
+            return Response({"error": "groups must be a list of UUIDs"}, status=400)
+
+        # Validate IDs exist; you can soften this if you prefer
+        groups = list(UserGroup.objects.filter(id__in=group_ids))
+        if len(groups) != len(set(group_ids)):
+            return Response({"error": "one or more groups not found"}, status=400)
+
+        # This works because the M2M is defined on UserGroup with related_name="groups"
+        user.groups.set(groups)  # replace all memberships at once
+        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
 
     # POST /users/{id}/aliases
     # DELETE /users/{id}/aliases
