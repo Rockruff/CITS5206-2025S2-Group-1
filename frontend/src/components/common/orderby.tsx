@@ -14,7 +14,7 @@ export default function ({
 }) {
   return (
     <Select value={orderBy} onValueChange={setOrderBy}>
-      <SelectTrigger size="sm" className="-mx-4 border-none px-4 [&>:last-child]:hidden">
+      <SelectTrigger size="sm" className="-mx-4 border-none bg-transparent px-4 shadow-none [&>:last-child]:hidden">
         {columns.map((column, index) => {
           const asc = column.toLowerCase();
           const desc = `-${asc}`;
