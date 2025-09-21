@@ -2,6 +2,9 @@
 import { headers } from "next/headers";
 import React from "react";
 
+import CreateGroupDialog from "./create_dialog";
+import DeleteGroupButton from "./delete_button";
+
 type Group = {
   id: string;
   name: string;
@@ -34,8 +37,14 @@ export default async function GroupsPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold">Groups</h1>
-      <p className="text-muted-foreground mb-6 text-sm">List of user groups in the system.</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Groups</h1>
+          <p className="text-muted-foreground text-sm">List of user groups in the system.</p>
+        </div>
+
+        <CreateGroupDialog />
+      </div>
 
       <div className="rounded-2xl bg-white p-4 shadow">
         <div className="overflow-x-auto">
@@ -45,6 +54,7 @@ export default async function GroupsPage() {
                 <th className="px-3 py-2">Name</th>
                 <th className="px-3 py-2">Description</th>
                 <th className="px-3 py-2">Created</th>
+                <th className="px-3 py-2">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -53,6 +63,9 @@ export default async function GroupsPage() {
                   <td className="px-3 py-2 font-medium">{g.name}</td>
                   <td className="px-3 py-2">{g.description?.trim() ? g.description : "—"}</td>
                   <td className="px-3 py-2">{new Date(g.timestamp).toLocaleDateString()}</td>
+                  <td className="px-3 py-2">
+                    <DeleteGroupButton id={g.id} name={g.name} />
+                  </td>
                 </tr>
               ))}
               {groups.length === 0 && (
