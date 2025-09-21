@@ -3,14 +3,8 @@ interface RequstPromise<T> extends Promise<T> {
 }
 
 export class APIClient {
-  private baseUrl: string;
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-  }
-
   async login(uwa_id: string) {
-    const url = new URL("/api/auth/login", this.baseUrl);
+    const url = "/api/auth/login";
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -23,7 +17,7 @@ export class APIClient {
   }
 
   async refresh() {
-    const url = new URL("/api/auth/refresh", this.baseUrl);
+    const url = "/api/auth/refresh";
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -35,7 +29,7 @@ export class APIClient {
   }
 
   private request<T>(method: string, path: string, params: Record<string, any>): RequstPromise<T> {
-    const url = new URL(path, this.baseUrl);
+    const url = new URL(path);
     const controller = new AbortController();
 
     const headers: Record<string, string> = {
@@ -98,7 +92,7 @@ export class APIClient {
   }
 }
 
-const api = new APIClient(location.origin);
+const api = new APIClient();
 export default api;
 
 // to be fixed later.

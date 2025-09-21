@@ -24,42 +24,42 @@ export interface ListUserResponse {
 }
 
 export function useUsers({
-  searchFilter,
-  groupFilter,
-  roleFilter,
-  orderBy,
-  currentPage = 1,
-  pageSize = 10,
+  search,
+  group,
+  role,
+  order_by,
+  page = 1,
+  page_size = 10,
 }: {
-  searchFilter?: string;
-  groupFilter?: string;
-  roleFilter?: string;
-  orderBy?: string;
-  currentPage?: number;
-  pageSize?: number;
+  search?: string;
+  group?: string;
+  role?: string;
+  order_by?: string;
+  page?: number;
+  page_size?: number;
 }) {
-  const search = new URLSearchParams();
+  const params = new URLSearchParams();
 
-  if (searchFilter) {
+  if (search) {
     // if name looks like id, then search by id
     // otherwise, search by name
-    const id = parseInt(searchFilter);
+    const id = parseInt(search);
     const key = Number.isNaN(id) ? "name" : "id";
-    search.set(key, searchFilter);
+    params.set(key, search);
   }
-  if (groupFilter) search.set("group", groupFilter);
-  if (roleFilter) search.set("role", roleFilter);
-  if (orderBy) search.set("order_by", orderBy);
+  if (group) params.set("group", group);
+  if (role) params.set("role", role);
+  if (order_by) params.set("order_by", order_by);
 
-  search.set("page", String(currentPage));
-  search.set("page_size", String(pageSize));
+  params.set("page", String(page));
+  params.set("page_size", String(page_size));
 
-  let { data, error, isLoading } = useSWR<ListUserResponse>(`/api/users?${search}`, fetcher);
+  let { data, error, isLoading } = useSWR<ListUserResponse>(`/api/users?${params}`, fetcher);
 
   if (!data || error || isLoading) {
     data = {
-      page: currentPage,
-      page_size: pageSize,
+      page: page,
+      page_size: page_size,
       total_pages: 0,
       total_items: 0,
       items: [],

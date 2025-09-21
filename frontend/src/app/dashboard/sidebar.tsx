@@ -146,7 +146,7 @@ function Sidebar() {
         <Transition
           key="desktop-sidebar"
           show={isDesktopSidebarOpen}
-          className="cotain-strict h-[var(--h-sidebar)]"
+          className="h-[var(--h-sidebar)] contain-strict"
           type="transition-[width]"
           before="hidden"
           start="w-0"

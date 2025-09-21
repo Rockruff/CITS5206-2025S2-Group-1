@@ -37,7 +37,7 @@ export default function UserSelect({
 }) {
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const { data, error, isLoading } = useUsers({ searchFilter: searchQuery });
+  const { data, error, isLoading } = useUsers({ search: searchQuery });
 
   const [open, setOpen] = useState(false);
   const candidateItems = data.items;
