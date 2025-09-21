@@ -2,12 +2,10 @@
 
 import { BubblesIcon, CircleXIcon, LoaderCircleIcon } from "lucide-react";
 import Link from "next/link";
-import React, { useState } from "react";
-import useSWR from "swr";
+import React from "react";
 
 import { AddUserToGroupDialog, CreateUserDialog, RemoveUserFromGroupDialog } from "./dialogs";
-import { fetcher } from "@/api/common";
-import { User, UserGroup, useUsers } from "@/api/users";
+import { User, UserGroup, useGroups, useUsers } from "@/api/users";
 import UserSelect from "@/components/app/user-select";
 import TableHeader from "@/components/common/orderby";
 import AppPagination from "@/components/common/pager";
@@ -23,6 +21,7 @@ import {
   MenubarTrigger,
 } from "@/components/ui/menubar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useQueryParamsState } from "@/hooks/search";
 import { useSelection } from "@/hooks/selection";
 import { cn } from "@/lib/utils";
 
@@ -30,39 +29,21 @@ export default function Users() {
   const selectedUsers = useSelection<User>([]);
   const selectedGroups = useSelection<UserGroup>([]);
 
-  const [searchFilter, setSearchFilter] = useState("");
-  const [groupFilter, setGroupFilter] = useState<string>("");
-  const [roleFilter, setRoleFilter] = useState<string>("");
-  const [orderBy, setOrderBy] = useState("id");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [query, setQuery] = useQueryParamsState({
+    search: "",
+    group: "",
+    role: "",
+    order_by: "id",
+    page: 1,
+    page_size: 10,
+  });
+
+  const ureq = useUsers(query);
+  const greq = useGroups();
 
   const createUserDialog = CreateUserDialog();
   const addUserToGroupDialog = AddUserToGroupDialog(selectedUsers, selectedGroups);
   const removeUserFromGroupDialog = RemoveUserFromGroupDialog(selectedUsers, selectedGroups);
-
-  const params = new URLSearchParams();
-  for (const [k, v] of Object.entries({
-    page: currentPage,
-    page_size: pageSize,
-    group: groupFilter,
-    role: roleFilter,
-    order_by: orderBy,
-  })) {
-    if (v) params.set(k, String(v));
-  }
-  if (searchFilter) {
-    if (Number.isNaN(parseInt(searchFilter))) {
-      params.set("name", searchFilter);
-    } else {
-      params.set("id", searchFilter);
-    }
-  }
-
-  const ureq = useUsers({ searchFilter, groupFilter, roleFilter, orderBy, currentPage, pageSize });
-
-  const { data: gdata } = useSWR<UserGroup[]>("/api/groups", fetcher);
-  const groups = gdata ?? [];
 
   return (
     <>
@@ -75,44 +56,33 @@ export default function Users() {
         <div className="flex flex-col gap-4 px-4 py-3 md:flex-row md:items-center">
           <Input
             type="text"
-            value={searchFilter}
-            onChange={(e) => setSearchFilter(e.target.value)}
+            value={query.search}
+            onChange={(e) => setQuery({ search: e.target.value, page: 1 })}
             placeholder="Search User..."
           />
 
           <div className="flex items-center gap-2">
             <label className="text-muted-foreground text-sm">Group:</label>
-            <Select
-              value={groupFilter}
-              onValueChange={(x) => {
-                setGroupFilter(x ?? "");
-                setCurrentPage(1);
-              }}
-            >
+            <Select value={query.group} onValueChange={(v) => setQuery({ group: v ?? "", page: 1 })}>
               <SelectTrigger>
                 <SelectValue placeholder="Any Group" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={undefined as unknown as string /* workaround */}>Any Group</SelectItem>
-                {groups &&
-                  groups.map((group) => (
+                {greq.data.map((group) => {
+                  return (
                     <SelectItem key={group.id} value={group.id}>
                       {group.name}
                     </SelectItem>
-                  ))}
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
 
           <div className="flex items-center gap-2">
             <label className="text-muted-foreground text-sm">Role:</label>
-            <Select
-              value={roleFilter}
-              onValueChange={(x) => {
-                setRoleFilter(x ?? "");
-                setCurrentPage(1);
-              }}
-            >
+            <Select value={query.role} onValueChange={(v) => setQuery({ role: v ?? "", page: 1 })}>
               <SelectTrigger>
                 <SelectValue placeholder="Any Role" />
               </SelectTrigger>
@@ -178,10 +148,18 @@ export default function Users() {
                     />
                   </th>
                   <th>
-                    <TableHeader orderBy={orderBy} setOrderBy={setOrderBy} columns={["Name", "ID"]} />
+                    <TableHeader
+                      orderBy={query.order_by}
+                      setOrderBy={(v) => setQuery({ order_by: v })}
+                      columns={["Name", "ID"]}
+                    />
                   </th>
                   <th>
-                    <TableHeader orderBy={orderBy} setOrderBy={setOrderBy} columns={["Role"]} />
+                    <TableHeader
+                      orderBy={query.order_by}
+                      setOrderBy={(v) => setQuery({ order_by: v })}
+                      columns={["Role"]}
+                    />
                   </th>
                   <th>
                     <div className="text-xs font-bold">Action</div>
@@ -218,7 +196,7 @@ export default function Users() {
                     </td>
                     <td>
                       <div className="flex justify-center gap-2">
-                        {groupFilter ? (
+                        {query.group ? (
                           <Button size="sm" variant="default">
                             Remove
                           </Button>
@@ -239,11 +217,11 @@ export default function Users() {
         <div className="px-4 py-3">
           <AppPagination
             totalItems={ureq.data.total_items}
-            pageSize={pageSize}
-            setPageSize={setPageSize}
+            pageSize={query.page_size}
+            setPageSize={(v) => setQuery({ page_size: v })}
             pageSizeOptions={[5, 10, 20, 50, 100, 200, 500, 1000]}
-            currentPage={currentPage}
-            setCurrentPage={setCurrentPage}
+            currentPage={query.page}
+            setCurrentPage={(v) => setQuery({ page: v })}
           />
         </div>
       </div>
