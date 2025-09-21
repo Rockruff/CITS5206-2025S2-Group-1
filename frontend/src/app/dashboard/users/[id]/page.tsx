@@ -1,12 +1,14 @@
 "use client";
 
 import { PlusIcon, XIcon } from "lucide-react";
-import { use, useEffect, useState } from "react";
+import { use } from "react";
+import { useEffect, useState } from "react";
 
 import api from "@/api/common";
 import { User, UserGroup } from "@/api/users";
 import UserGroupSelect from "@/components/app/user-group-select";
 import { ButtonIconOnly } from "@/components/common/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,18 +19,33 @@ export default function Users({ params }: { params: Promise<{ id: string }> }) {
 
   const [user, setUser] = useState<User>();
 
-  const selectedUserGroups = useSelection<UserGroup>([
-    { id: "1", name: "HSW Staff" },
-    { id: "2", name: "UWA Student" },
-    { id: "3", name: "CSSE Staff" },
-    { id: "4", name: "Student" },
-    { id: "5", name: "HSW Staff" },
-    { id: "6", name: "Student" },
-  ]);
+  const selectedUserGroups = useSelection<UserGroup>([]);
 
+  /*  
   useEffect(() => {
     api.get<User>(`/api/users/${id}`).then(setUser);
   }, []);
+*/
+  useEffect(() => {
+    (async () => {
+      const u = await api.get<User>(`/api/users/${id}`);
+      setUser(u);
+      const all = await api.get<UserGroup[]>(`/api/groups`);
+      selectedUserGroups.clear?.();
+      all.filter((g) => u.groups.includes(g.id)).forEach((g) => selectedUserGroups.add?.(g));
+    })();
+  }, [id]);
+
+  const [saving, setSaving] = useState(false);
+  async function onSave() {
+    setSaving(true);
+    try {
+      const items = (selectedUserGroups as any).items ?? [];
+      await api.put(`/api/users/${id}/groups`, { groups: items.map((g: UserGroup) => g.id) });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (!user) return null;
 
@@ -38,6 +55,12 @@ export default function Users({ params }: { params: Promise<{ id: string }> }) {
       <div>
         <h1 className="text-2xl font-bold">User Profile</h1>
         <p className="text-muted-foreground">View & edit user details</p>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <Button onClick={onSave} disabled={saving}>
+          {saving ? "Saving..." : "Save"}
+        </Button>
       </div>
 
       {/* Config Form */}
