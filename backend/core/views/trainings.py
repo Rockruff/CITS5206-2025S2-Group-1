@@ -22,7 +22,54 @@ class TrainingViewSet(viewsets.GenericViewSet):
             return Training.objects.get(id=pk)
         except Training.DoesNotExist:
             raise Http404
+    
+     @action(detail=True, methods=["post"], url_path="upload-lms", parser_classes=[MultiPartParser])
+    def upload_lms(self, request, pk=None):
+        training = self.get_object()
+        excel_file = request.FILES.get("file")
 
+        if not excel_file:
+            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            df = pd.read_excel(excel_file)
+            updated, created = 0, 0
+
+            for _, row in df.iterrows():
+                username = str(row.get("Username")).strip()
+                score = row.get("Score")
+                completion_date = row.get("Last Access")
+
+                try:
+                    user = User.objects.get(username=username)
+                except User.DoesNotExist:
+                    continue
+
+                required_score = training.config.get("completance_score", 90)
+                completed = bool(score and score >= required_score)
+
+                # Assuming you already have TrainingRecord linked to Training
+                record, was_created = training.trainingrecord_set.update_or_create(
+                    user=user,
+                    defaults={
+                        "score": score,
+                        "completion_date": completion_date,
+                        "completed": completed,
+                    },
+                )
+
+                if was_created:
+                    created += 1
+                else:
+                    updated += 1
+
+            return Response(
+                {"message": "LMS upload processed", "created": created, "updated": updated},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
     # POST /trainings
     def create(self, request):
         serializer = TrainingCreateSerializer(data=request.data)
