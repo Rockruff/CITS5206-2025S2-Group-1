@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpenText, ChartSpline, CircleGauge, FolderDown, LogOut, Menu, Users } from "lucide-react";
+import { BookOpenText, ChartSpline, CircleGauge, CircleUser, FolderDown, LogOut, Menu, Users } from "lucide-react";
 import { createContext, useContext, useState } from "react";
 
 import { ButtonIconOnly, ButtonText } from "@/components/common/button";
@@ -33,6 +33,9 @@ function SidebarContent() {
             </ButtonText>
             <ButtonText href="/dashboard/users" icon={Users} onClick={closeMobileSidebar}>
               Users
+            </ButtonText>
+            <ButtonText href="/dashboard/groups" icon={CircleUser} onClick={closeMobileSidebar}>
+              Groups
             </ButtonText>
             <ButtonText href="/dashboard/trainings" icon={BookOpenText} onClick={closeMobileSidebar}>
               Training Programs
