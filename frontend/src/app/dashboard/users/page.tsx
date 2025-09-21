@@ -113,30 +113,32 @@ export default function Users() {
           </Menubar>
         </div>
 
-        <div className="h-92 overflow-x-auto overflow-y-auto border-y">
+        <div className="contents [&>*]:h-92 [&>*]:border-y">
           {ureq.isLoading ? (
-            <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2">
+            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
               <LoaderCircleIcon className="animate-spin" />
               <span className="text-sm">Loading Data...</span>
             </div>
           ) : !ureq.data || ureq.error ? (
-            <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2">
+            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
               <CircleXIcon />
               <span className="text-sm">{`${ureq.error}`}</span>
             </div>
           ) : ureq.data.items.length === 0 ? (
-            <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2">
+            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
               <BubblesIcon />
               <span className="text-sm">Nothing is Found</span>
             </div>
           ) : (
             <table
               className={cn(
-                "w-full [&_tbody_tr]:h-16 [&_thead_tr]:h-12", // row heights + width
-                "[&_tbody]:mb-[-1px] [&_tr]:border-b", // borders
-                "[&_tr]:px-8", // row padding
-                "[&_th,td]:gap-2", // cell gap
-                "[&_th,td]:w-20 [&_th,td]:nth-1:w-4 [&_th,td]:nth-2:w-auto",
+                "[&_tbody_tr]:h-16 [&_thead_tr]:h-12", // height config
+                "flex flex-col overflow-x-auto overflow-y-hidden", // x-scrollable table
+                "[&_tbody]:flex-1 [&_tbody]:overflow-y-auto", // y-scrollable tbody
+                "[&_tbody]:mb-[-1px] [&_tr]:border-b", // borders, with deduplication at bottom
+                "[&_tr]:flex [&_tr]:items-stretch [&_tr]:gap-8 [&_tr]:px-8", // row style
+                "[&_th,td]:flex [&_th,td]:items-center [&_th,td]:gap-2", // cell style
+                "[&_th,td]:w-20 [&_th,td]:nth-1:w-4 [&_th,td]:nth-2:flex-1", // column width
               )}
             >
               <thead>

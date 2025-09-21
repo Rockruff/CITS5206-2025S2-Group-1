@@ -22,8 +22,8 @@ class TrainingViewSet(viewsets.GenericViewSet):
             return Training.objects.get(id=pk)
         except Training.DoesNotExist:
             raise Http404
-    
-     @action(detail=True, methods=["post"], url_path="upload-lms", parser_classes=[MultiPartParser])
+
+    @action(detail=True, methods=["post"], url_path="upload-lms")
     def upload_lms(self, request, pk=None):
         training = self.get_object()
         excel_file = request.FILES.get("file")
@@ -69,7 +69,7 @@ class TrainingViewSet(viewsets.GenericViewSet):
             )
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
     # POST /trainings
     def create(self, request):
         serializer = TrainingCreateSerializer(data=request.data)
