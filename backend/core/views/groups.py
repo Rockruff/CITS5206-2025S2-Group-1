@@ -1,4 +1,4 @@
-from core.permissions import ReadOnlyOrAdmin
+from core.permissions import IsAdmin
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -7,7 +7,7 @@ from core.serializers.groups import UserGroupSerializer
 
 
 class UserGroupViewSet(viewsets.ModelViewSet):
-    permission_classes = [ReadOnlyOrAdmin]
+    permission_classes = [IsAdmin]
     """
     API endpoints for creating, updating, editing, deleting user groups,
     and adding users to groups.

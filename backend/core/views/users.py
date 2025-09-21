@@ -18,7 +18,7 @@ from core.serializers.users import (
     UserAliasCreateSerializer,
     UserAliasDeleteSerializer,
 )
-from core.permissions import ReadOnlyOrAdmin
+from core.permissions import IsAuthenticated, IsAdmin
 
 try:
     import openpyxl
@@ -29,7 +29,7 @@ except Exception:
 
 
 class UserViewSet(viewsets.GenericViewSet):
-    permission_classes = [ReadOnlyOrAdmin]
+    permission_classes = [IsAdmin]
 
     def get_object(self):
         pk = self.kwargs.get("pk")
@@ -117,6 +117,11 @@ class UserViewSet(viewsets.GenericViewSet):
         user = self.get_object()
         user.delete()
         return Response()
+
+    # GET /users/me
+    @action(detail=False, methods=["get"], url_path="me", permission_classes=[IsAuthenticated])
+    def me(self, request):
+        return Response(UserSerializer(request.user).data)
 
     @action(detail=True, methods=["put"], url_path="groups")
     def set_groups(self, request, *args, **kwargs):

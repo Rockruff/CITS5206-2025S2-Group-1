@@ -10,11 +10,11 @@ from core.serializers.trainings import (
     TrainingUpdateSerializer,
     TrainingGroupsPatchSerializer,
 )
-from core.permissions import ReadOnlyOrAdmin
+from core.permissions import IsAdmin
 
 
 class TrainingViewSet(viewsets.GenericViewSet):
-    permission_classes = [ReadOnlyOrAdmin]
+    permission_classes = [IsAdmin]
 
     def get_object(self):
         pk = self.kwargs.get("pk")
