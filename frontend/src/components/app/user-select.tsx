@@ -3,7 +3,7 @@
 import { CheckIcon, ChevronsUpDownIcon, LoaderCircleIcon, SearchIcon } from "lucide-react";
 import { useState } from "react";
 
-import { User, useUsers } from "@/api/users";
+import { User, listUsers } from "@/api/users";
 import { Button } from "@/components/ui/button";
 import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -21,7 +21,7 @@ const renderItem = (user: User) => {
         />
       </div>
       <div>
-        <div className="text-sm">{user.name}</div>{" "}
+        <div className="text-sm">{user.name}</div>
         <div className="text-xs before:content-['('] after:content-[')']">{user.id}</div>
       </div>
     </div>
@@ -37,7 +37,7 @@ export default function UserSelect({
 }) {
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const { data, error, isLoading } = useUsers({ search: searchQuery });
+  const { data, error, isLoading } = listUsers({ search: searchQuery });
 
   const [open, setOpen] = useState(false);
   const candidateItems = data.items;

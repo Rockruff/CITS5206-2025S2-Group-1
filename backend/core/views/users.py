@@ -17,8 +17,12 @@ from core.serializers.users import (
     UserUpdateSerializer,
     UserAliasCreateSerializer,
     UserAliasDeleteSerializer,
+    UserRowSerializer,
 )
 from core.permissions import IsAuthenticated, IsAdmin
+
+from core.utils import NAME_COL, UID_COL
+from core.utils import parse_csv, parse_xlsx
 
 try:
     import openpyxl
@@ -115,6 +119,8 @@ class UserViewSet(viewsets.GenericViewSet):
     # DELETE /users/{id}
     def destroy(self, request, *args, **kwargs):
         user = self.get_object()
+        if user.id == request.user.id:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
         user.delete()
         return Response()
 
@@ -163,89 +169,69 @@ class UserViewSet(viewsets.GenericViewSet):
     def batch(self, request):
         file = request.FILES.get("file")
         if not file:
-            return Response({"error": "Missing file"}, status=400)
+            return Response(
+                {"error": "Please upload a .csv or .xlsx file"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Determine file type
         name = file.name.lower()
-        try:
-            rows = []
-            if name.endswith(".csv"):
-                text = file.read().decode("utf-8-sig")
-                reader = csv.DictReader(io.StringIO(text))
-                for r in reader:
-                    rows.append(r)
-            elif name.endswith(".xlsx"):
-                if not HAS_XLSX:
-                    return Response({"error": "XLSX support not available on server"}, status=400)
-                wb = openpyxl.load_workbook(file, read_only=True)
-                ws = wb.active
-                headers = [
-                    str(c.value).strip() if c.value is not None else ""
-                    for c in next(ws.iter_rows(min_row=1, max_row=1))
-                ]
-
-                def normalise(h):
-                    return re.sub(r"\W+", "", h).lower()
-
-                header_map = {normalise(h): idx for idx, h in enumerate(headers)}
-                for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-                    rec = {}
-                    for norm, idx in header_map.items():
-                        rec[headers[idx]] = row[idx] if idx < len(row) else None
-                    rows.append(rec)
-            else:
-                return Response({"error": "Unsupported file type (use .csv or .xlsx)"}, status=400)
-        except Exception:
-            return Response({"error": "Failed to parse file"}, status=400)
-
-        def pick(d: Dict, keys: List[str]):
-            # keys tested case-insensitive and lenient
-            norm = {re.sub(r"\W+", "", k or "").lower(): v for k, v in d.items()}
-            id_val = None
-            name_val = None
-            for k in ["uwaid", "id", "uw a id", "uwahid", "uw a_id"]:
-                if k in norm:
-                    id_val = norm[k]
-                    break
-            for k in ["name", "fullname", "full_name"]:
-                if k in norm:
-                    name_val = norm[k]
-                    break
-            return (
-                str(id_val).strip() if id_val is not None else None,
-                str(name_val).strip() if name_val is not None else None,
+        if name.endswith(".csv"):
+            parser = parse_csv
+        elif name.endswith(".xlsx"):
+            parser = parse_xlsx
+        else:
+            return Response(
+                {"error": "Please upload a .csv or .xlsx file"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        errors = []
-        to_create = []
-        skipped = 0
-        created = 0
+        try:
+            cols = [UID_COL, NAME_COL]
+            rows = parser(file, cols)
+        except Exception:
+            return Response(
+                {
+                    "error": (
+                        "Failed to parse uploaded file. "
+                        f"File must include all expected columns: {cols}."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        with transaction.atomic():
-            for idx, row in enumerate(rows, start=1):
-                uid, uname = pick(row, [])
-                if not uid or not re.match(r"^\d{8}$", uid):
-                    errors.append({"row": idx, "msg": "Invalid UWA ID"})
-                    continue
-                if not uname:
-                    errors.append({"row": idx, "msg": "Missing Name"})
-                    continue
+        created = []
 
-                try:
-                    existing = User.objects.get(id=uid)
-                    if existing.name != uname:
-                        errors.append({"row": idx, "msg": f"Name mismatch for UWA ID {uid}"})
-                    else:
-                        skipped += 1
-                except User.DoesNotExist:
-                    u = User(id=uid, name=uname)
-                    to_create.append(u)
+        with transaction.atomic():  # rollback everything if any row fails
+            for row_idx, user_id, name in rows:
+                alias = UserAlias.objects.filter(id=user_id).first()
+                instance = alias.user if alias else None
 
-            if to_create:
-                User.objects.bulk_create(to_create)
-                # create aliases for new users
-                alias_objs = [UserAlias(user=u, id=u.id) for u in to_create]
-                UserAlias.objects.bulk_create(alias_objs)
-                created = len(to_create)
+                serializer = UserRowSerializer(
+                    instance=instance,
+                    data={"id": user_id, "name": name},
+                    partial=True,
+                )
 
-        return Response({"errors": errors, "created_count": created, "skipped_count": skipped})
+                if not serializer.is_valid():
+                    transaction.set_rollback(True)
+
+                    # Show first error message
+                    message = ""
+                    for field, messages in serializer.errors.items():
+                        for msg in messages:
+                            if field != "non_field_errors":
+                                message = f"{field}: {msg}"
+                            else:
+                                message = msg
+                            break
+
+                    return Response(
+                        {"error": f"Row {row_idx}: {message}"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                user = serializer.save()
+                created.append(user)
+
+        return Response(UserSerializer(created, many=True).data)

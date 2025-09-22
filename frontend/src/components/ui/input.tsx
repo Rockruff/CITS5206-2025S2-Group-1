@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+function InputOriginal({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
     <input
       type={type}
@@ -14,6 +14,26 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         className,
       )}
       {...props}
+    />
+  );
+}
+
+type InputProps = React.ComponentProps<"input"> & {
+  onValueChange?: (value: string) => void;
+};
+
+function Input({ onChange, onValueChange, ...props }: InputProps) {
+  return (
+    <InputOriginal
+      {...props}
+      onChange={(e) => {
+        if (onValueChange) {
+          onValueChange(e.target.value);
+        }
+        if (onChange) {
+          onChange(e);
+        }
+      }}
     />
   );
 }

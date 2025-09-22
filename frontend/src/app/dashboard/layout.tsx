@@ -1,29 +1,40 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import React, { useEffect } from "react";
+import { LoaderCircleIcon } from "lucide-react";
 
-import { useAuth } from "../../hooks/auth";
-import WithSidebar, { SidebarProvider } from "./sidebar";
-
-// ← import provider
+import Header from "./header";
+import MainWithSidebar, { SidebarProvider } from "./sidebar";
+import { logout } from "@/api/common";
+import { getCurrentUser } from "@/api/users";
+import Logo from "@/components/app/logo";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { data: user, error } = getCurrentUser();
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace("/login");
-    }
-  }, [isAuthenticated, router]);
+  if (!user) {
+    if (error) logout();
 
-  if (!isAuthenticated) return null;
+    return (
+      <div className="bg-primary text-primary-foreground flex h-screen w-screen flex-col items-center justify-center gap-4">
+        <LoaderCircleIcon className="size-8 animate-spin" />
+        <span>Loading</span>
+      </div>
+    );
+  }
 
-  // Wrap sidebar tree with its provider to satisfy useSidebar()
+  if (user.role !== "ADMIN") {
+    return (
+      <div className="bg-primary text-primary-foreground flex h-screen w-screen flex-col items-center justify-center gap-4">
+        <Logo />
+        <span>You don't have the permission required to visit this page.</span>
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
-      <WithSidebar>{children}</WithSidebar>
+      <Header className="sticky top-0 z-[var(--z-header)] h-[var(--h-header)]" />
+      <MainWithSidebar>{children}</MainWithSidebar>
     </SidebarProvider>
   );
 }

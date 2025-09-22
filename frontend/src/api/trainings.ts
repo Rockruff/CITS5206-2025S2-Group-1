@@ -1,4 +1,4 @@
-import api from "@/api/common";
+import * as api from "@/api/common";
 
 export interface Training {
   id: string;
@@ -63,5 +63,5 @@ export async function updateTraining(id: string, data: TrainingUpdateRequest): P
 }
 
 export async function deleteTraining(id: string): Promise<void> {
-  return api.delete(`/api/trainings/${id}`);
+  return api.del(`/api/trainings/${id}`);
 }

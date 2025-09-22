@@ -3,28 +3,35 @@
 import { CheckIcon, ChevronsUpDownIcon, LoaderCircleIcon, SearchIcon } from "lucide-react";
 import { useState } from "react";
 
-import { UserGroup, useGroups } from "@/api/users";
+import { UserGroup, listGroups } from "@/api/groups";
 import { Button } from "@/components/ui/button";
 import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Selection } from "@/hooks/selection";
-import { cn } from "@/lib/utils";
+import { Set } from "@/hooks/selection-v2";
+import { cn, kwMatch } from "@/lib/utils";
 
-const renderItem = (userGroup: UserGroup) => <span className="truncate">{userGroup.name}</span>;
+const renderItem = (groups: UserGroup[], id: string) => {
+  const group = groups.find((group) => group.id === id);
+  if (!group) return null;
+  return <span className="truncate">{group.name}</span>;
+};
 
 export default function UserGroupSelect({
   selection,
   className = "w-64",
 }: {
-  selection: Selection<UserGroup>;
+  selection: Set<string>;
   className?: string;
 }) {
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const { data: groups = [], isLoading } = useGroups();
+  const { data: groups, isLoading } = listGroups();
 
   const [open, setOpen] = useState(false);
-  const unSelectedItems = groups.filter((item) => !selection.has(item));
+
+  const unSelectedItems = groups
+    .filter((item) => !selection.has(item.id))
+    .filter((item) => kwMatch(item.name, searchQuery));
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -48,9 +55,9 @@ export default function UserGroupSelect({
           <CommandList>
             {selection.length > 0 && (
               <CommandGroup className="border-b">
-                {selection.map((item) => (
-                  <CommandItem key={item.id} value={item.id} onSelect={() => selection.remove(item)}>
-                    {renderItem(item)}
+                {selection.map((id) => (
+                  <CommandItem key={id} value={id} onSelect={() => selection.remove(id)}>
+                    {renderItem(groups, id)}
                     <CheckIcon className="ml-auto" />
                   </CommandItem>
                 ))}
@@ -68,8 +75,8 @@ export default function UserGroupSelect({
             ) : (
               <CommandGroup>
                 {unSelectedItems.map((item) => (
-                  <CommandItem key={item.id} value={item.id} onSelect={() => selection.add(item)}>
-                    {renderItem(item)}
+                  <CommandItem key={item.id} value={item.id} onSelect={() => selection.add(item.id)}>
+                    {renderItem(groups, item.id)}
                   </CommandItem>
                 ))}
               </CommandGroup>

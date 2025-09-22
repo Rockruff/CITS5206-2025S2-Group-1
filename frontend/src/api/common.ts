@@ -1,100 +1,179 @@
-interface RequstPromise<T> extends Promise<T> {
-  abort: () => void;
+import useSWR, { SWRConfiguration, SWRResponse, mutate } from "swr";
+
+// General shape of DRF serializer errors
+export type DRFError = Record<string, string[]>;
+
+export type APIError = { error: string; data?: DRFError };
+
+// --------------------
+// Auth helpers
+// --------------------
+
+export function login(access: string, refresh: string) {
+  localStorage.setItem("access", access);
+  localStorage.setItem("refresh", refresh);
+
+  const next = sessionStorage.getItem("next") || "/";
+  sessionStorage.removeItem("next");
+  location.assign(next);
 }
 
-export class APIClient {
-  async login(uwa_id: string) {
-    const url = "/api/auth/login";
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uwa_id: uwa_id }),
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    const { access, refresh } = await response.json();
-    localStorage.access = access;
-    localStorage.refresh = refresh;
+export function logout() {
+  localStorage.removeItem("access");
+  localStorage.removeItem("refresh");
+
+  const next = location.pathname;
+  sessionStorage.setItem("next", next);
+  location.assign("/login");
+}
+
+async function refresh() {
+  const refresh = localStorage.getItem("refresh");
+  const response = await fetch("/api/auth/refresh", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh }),
+  }).catch(() => ({ ok: false }) as const);
+
+  if (!response.ok) {
+    throw new Error("Failed to refresh token");
   }
 
-  async refresh() {
-    const url = "/api/auth/refresh";
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh: localStorage.refresh }),
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    const { access } = await response.json();
-    localStorage.access = access;
-  }
+  const { access } = await response.json();
+  localStorage.setItem("access", access);
+}
 
-  private request<T>(method: string, path: string, params: Record<string, any>): RequstPromise<T> {
-    const url = new URL(path);
-    const controller = new AbortController();
+// --------------------
+// Helpers
+// --------------------
 
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (localStorage.access) {
-      headers["Authorization"] = `Bearer ${localStorage.access}`;
+async function handleError(response: Response): Promise<APIError> {
+  let data: any;
+
+  try {
+    data = await response.json();
+    if (typeof data !== "object" || data === null) {
+      throw new Error("Response is not a JSON object");
     }
-
-    const config: RequestInit = {
-      method,
-      headers,
-      signal: controller.signal,
+  } catch {
+    return {
+      error: `HTTP ${response.status}: ${response.statusText}`,
     };
+  }
 
-    if (method === "GET") {
-      for (const key in params) {
-        url.searchParams.set(key, params[key]);
+  if (Object.values(data).some((val) => Array.isArray(val) && val.every((msg) => typeof msg === "string"))) {
+    return {
+      error: `HTTP ${response.status}: ${response.statusText}`,
+      data,
+    };
+  }
+
+  if (typeof data.error === "string") {
+    return { error: data.error };
+  }
+
+  return {
+    error: `HTTP ${response.status}: ${response.statusText}`,
+  };
+}
+
+async function request<T>(
+  method: string,
+  path: string,
+  params: Record<string, any> | FormData = {},
+  handled401: boolean = false,
+): Promise<T> {
+  const url = new URL(path, location.origin);
+
+  const headers: Record<string, string> = {};
+  const access = localStorage.getItem("access");
+  if (access) headers["Authorization"] = `Bearer ${access}`;
+
+  const config: RequestInit = { method, headers };
+
+  if (method === "GET" && !(params instanceof FormData)) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        value.forEach((v) => url.searchParams.append(key, String(v)));
+      } else if (value !== undefined && value !== null) {
+        url.searchParams.set(key, String(value));
       }
-    } else {
-      config.body = JSON.stringify(params);
+    });
+  } else if (params instanceof FormData) {
+    // For file uploads: do not set Content-Type, browser handles it
+    config.body = params;
+  } else if (Object.keys(params).length > 0) {
+    headers["Content-Type"] = "application/json";
+    config.body = JSON.stringify(params);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url, config);
+  } catch (err: unknown) {
+    throw { error: String(err) } satisfies APIError;
+  }
+
+  if (response.status === 401) {
+    try {
+      if (handled401) throw undefined;
+      await refresh();
+    } catch {
+      throw { error: "Your session expired, please log in again" } satisfies APIError;
     }
-
-    const promise: Promise<T> = (async () => {
-      let response = await fetch(url, config);
-
-      if (response.status === 401) {
-        await this.refresh();
-        headers["Authorization"] = `Bearer ${localStorage.access}`;
-        response = await fetch(url, { ...config, headers });
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return response.json() as Promise<T>;
-    })();
-
-    // extend the promise with an abort() method
-    (promise as RequstPromise<T>).abort = () => controller.abort();
-    return promise as RequstPromise<T>;
+    return request(method, path, params, true);
   }
 
-  // Convenience methods
-  get<T>(path: string, params: Record<string, any> = {}) {
-    return this.request<T>("GET", path, params);
+  if (!response.ok) {
+    throw await handleError(response);
   }
-  post<T>(path: string, params: Record<string, any> = {}) {
-    return this.request<T>("POST", path, params);
-  }
-  put<T>(path: string, params: Record<string, any> = {}) {
-    return this.request<T>("PUT", path, params);
-  }
-  patch<T>(path: string, params: Record<string, any> = {}) {
-    return this.request<T>("PATCH", path, params);
-  }
-  delete<T>(path: string, params: Record<string, any> = {}) {
-    return this.request<T>("DELETE", path, params);
+
+  try {
+    const json = await response.json();
+    return json;
+  } catch {
+    return undefined as T;
   }
 }
 
-const api = new APIClient();
-export default api;
+// --------------------
+// Convenience methods
+// --------------------
 
-// to be fixed later.
-// We need to come up with a good way to define API helpers
-export const fetcher = (...args) => fetch(...args).then((res) => res.json());
+export function get<T>(path: string, params: Record<string, any> = {}) {
+  return request<T>("GET", path, params);
+}
+export function post<T>(path: string, params: Record<string, any> = {}) {
+  return request<T>("POST", path, params);
+}
+export function put<T>(path: string, params: Record<string, any> = {}) {
+  return request<T>("PUT", path, params);
+}
+export function patch<T>(path: string, params: Record<string, any> = {}) {
+  return request<T>("PATCH", path, params);
+}
+export function del<T>(path: string, params: Record<string, any> = {}) {
+  return request<T>("DELETE", path, params);
+}
+
+// --------------------
+// SWR helpers
+// --------------------
+
+export function swr<T>(
+  path: string,
+  params: Record<string, any> = {},
+  config?: SWRConfiguration<T>,
+): SWRResponse<T, APIError> {
+  return useSWR<T, APIError, [string, Record<string, any>]>(
+    [path, params],
+    ([url, query]) => get<T>(url, query),
+    config,
+  );
+}
+
+export function revalidatePath(path: string) {
+  return mutate((key) => Array.isArray(key) && typeof key[0] === "string" && key[0] === path, undefined, {
+    revalidate: true,
+  });
+}

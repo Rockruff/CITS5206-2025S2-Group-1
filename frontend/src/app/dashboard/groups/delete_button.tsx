@@ -2,9 +2,11 @@
 //used in groups_client.tsx
 "use client";
 
-import { useRouter } from "next/navigation";
 import * as React from "react";
+import { toast } from "sonner";
 
+import { del, revalidatePath } from "@/api/common";
+import SubmitButton from "@/components/common/submit";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,6 +18,43 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useForm } from "@/hooks/form";
+
+//For Delete Button in Groups Page
+//used in groups_client.tsx
+
+//For Delete Button in Groups Page
+//used in groups_client.tsx
+
+//For Delete Button in Groups Page
+//used in groups_client.tsx
+
+//For Delete Button in Groups Page
+//used in groups_client.tsx
+
+//For Delete Button in Groups Page
+//used in groups_client.tsx
+
+//For Delete Button in Groups Page
+//used in groups_client.tsx
+
+//For Delete Button in Groups Page
+//used in groups_client.tsx
+
+//For Delete Button in Groups Page
+//used in groups_client.tsx
+
+//For Delete Button in Groups Page
+//used in groups_client.tsx
+
+//For Delete Button in Groups Page
+//used in groups_client.tsx
+
+//For Delete Button in Groups Page
+//used in groups_client.tsx
+
+//For Delete Button in Groups Page
+//used in groups_client.tsx
 
 //For Delete Button in Groups Page
 //used in groups_client.tsx
@@ -23,39 +62,16 @@ import {
 //For Delete Button in Groups Page
 
 export default function DeleteGroupButton({ id, name }: { id: string; name: string }) {
-  const router = useRouter();
   const [open, setOpen] = React.useState(false);
-  const [submitting, setSubmitting] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
 
-  async function onDelete() {
-    setError(null);
-    setSubmitting(true);
-    try {
-      const resp = await fetch(`/api/groups/${id}`, {
-        method: "DELETE",
-        // include cookies/session if your backend uses SessionAuthentication
-        credentials: "include",
-        headers: { Accept: "application/json" },
-      });
+  const { working, error, submit } = useForm();
 
-      if (!resp.ok) {
-        let detail = "";
-        try {
-          const j = await resp.json();
-          detail = (j?.detail || j?.error || JSON.stringify(j)) ?? "";
-        } catch {}
-        throw new Error(`Delete failed (${resp.status}) ${detail}`);
-      }
-
-      setOpen(false);
-      router.refresh(); // re-fetch server component so the row disappears
-    } catch (err: any) {
-      setError(err.message ?? "Failed to delete group");
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  const onDelete = submit(async () => {
+    await del(`/api/groups/${id}`);
+    revalidatePath("/api/groups");
+    setOpen(false);
+    toast.success("Group Deleted");
+  });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -73,17 +89,17 @@ export default function DeleteGroupButton({ id, name }: { id: string; name: stri
           </DialogDescription>
         </DialogHeader>
 
-        {error && <div className="rounded-md bg-red-50 p-2 text-sm text-red-700">{error}</div>}
+        <div className="text-destructive text-sm empty:hidden">{error}</div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter>
           <DialogClose asChild>
-            <Button type="button" variant="ghost" disabled={submitting}>
+            <Button type="button" variant="ghost" disabled={working}>
               Cancel
             </Button>
           </DialogClose>
-          <Button variant="destructive" onClick={onDelete} disabled={submitting}>
-            {submitting ? "Deleting..." : "Delete"}
-          </Button>
+          <SubmitButton variant="destructive" onClick={onDelete} disabled={working}>
+            Delete
+          </SubmitButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -8,11 +8,13 @@ async function forward(req: NextRequest) {
   const backendResp = await fetch(url, {
     method: req.method,
     headers: req.headers,
-    body: ["GET", "HEAD"].includes(req.method) ? undefined : await req.text(),
+    body: req.body,
+    // @ts-expect-error Node fetch requires this
+    duplex: "half",
+    redirect: "manual",
   });
 
-  const body = await backendResp.text();
-  return new NextResponse(body, {
+  return new NextResponse(backendResp.body, {
     status: backendResp.status,
     headers: backendResp.headers,
   });

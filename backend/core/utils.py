@@ -1,40 +1,36 @@
 import csv
-from io import TextIOWrapper
+from typing import List, Tuple, IO, Sequence
 from openpyxl import load_workbook
 
 
-def iter_user_rows(uploaded_file):
-    # returns rows like {"name": "...", "uwa_id": "..."}
-    fname = getattr(uploaded_file, "name", "").lower()
-    if fname.endswith(".xlsx"):
-        wb = load_workbook(uploaded_file, read_only=True, data_only=True)
-        ws = wb.active
-        headers = [
-            str(c.value or "").strip().lower()
-            for c in next(ws.iter_rows(min_row=1, max_row=1))
-        ]
-        try:
-            i_name = headers.index("name")
-            i_uwa = next(i for i, h in enumerate(headers) if h in ("uwa id", "uwa_id"))
-        except Exception:
-            raise ValueError("Missing required columns: Name and UWA ID")
-        for row in ws.iter_rows(min_row=2):
-            name = row[i_name].value
-            uwa = row[i_uwa].value
-            if name and uwa:
-                yield {"name": str(name).strip(), "uwa_id": str(uwa).strip()}
-    else:
-        stream = (
-            uploaded_file
-            if isinstance(uploaded_file, TextIOWrapper)
-            else TextIOWrapper(uploaded_file, encoding="utf-8")
-        )
-        reader = csv.DictReader(stream)
-        cols = {(k or "").strip().lower(): k for k in (reader.fieldnames or [])}
-        if "name" not in cols or not ({"uwa id", "uwa_id"} & set(cols)):
-            raise ValueError("Missing required columns: Name and UWA ID")
-        uwa_col = cols.get("uwa id") or cols.get("uwa_id")
-        for r in reader:
-            name, uwa = r.get(cols["name"]), r.get(uwa_col)
-            if name and uwa:
-                yield {"name": name.strip(), "uwa_id": uwa.strip()}
+# Common column names
+NAME_COL = "Name"
+UID_COL = "UserID"
+
+
+def parse_xlsx(file: IO[bytes], columns: Sequence[str]) -> List[Tuple[int, ...]]:
+    """
+    Parse an .xlsx file and return rows as (row_index, ...columns...).
+    Example: parse_xlsx(file, [UID_COL, NAME_COL])
+    """
+    ws = load_workbook(file, read_only=True, data_only=True).active
+    headers = next(ws.iter_rows(min_row=1, max_row=1, values_only=True))
+
+    idxs = [headers.index(col) for col in columns]
+
+    return [
+        (row_idx, *(str(row[i]).strip() for i in idxs))
+        for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2)
+    ]
+
+
+def parse_csv(file: IO[bytes], columns: Sequence[str]) -> List[Tuple[int, ...]]:
+    """
+    Parse a .csv file and return rows as (row_index, ...columns...).
+    Example: parse_csv(file, [UID_COL, NAME_COL])
+    """
+    reader = csv.DictReader(file.read().decode("utf-8").splitlines())
+    return [
+        (row_idx, *(row[col].strip() for col in columns))
+        for row_idx, row in enumerate(reader, start=2)  # start=2 for consistency with Excel
+    ]

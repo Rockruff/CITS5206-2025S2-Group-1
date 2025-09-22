@@ -1,53 +1,47 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { login, post } from "@/api/common";
+import Logo from "@/components/app/logo";
+import SubmitButton from "@/components/common/submit";
+import { Input } from "@/components/ui/input";
+import { useForm } from "@/hooks/form";
+import { sleep } from "@/lib/utils";
 
-import { useAuth } from "../../hooks/auth";
+interface LoginResponse {
+  refresh: string;
+  access: string;
+}
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { login } = useAuth();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const { useField, error, working, reset, submit } = useForm();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    login(username, password); // mock auth
-    router.push("/dashboard");
-  };
+  const [id, setId] = useField("");
+
+  const handleSubmit = submit(async () => {
+    const { access, refresh } = await post<LoginResponse>("/api/auth/login", { uwa_id: id });
+    login(access, refresh);
+    await sleep(60 * 1000); // keep button display working state until redirection
+  });
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-2xl border bg-white p-6 shadow">
-        <h1 className="mb-4 text-center text-2xl font-semibold">SafeTrack Login</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium">Username</label>
-            <input
-              className="w-full rounded-md border px-3 py-2"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. admin"
-              required
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">Password</label>
-            <input
-              type="password"
-              className="w-full rounded-md border px-3 py-2"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
-          </div>
-          <button type="submit" className="w-full rounded-md border px-3 py-2 font-medium hover:bg-gray-50">
-            Log in
-          </button>
-          <p className="text-xs text-gray-500">Placeholder only — real UWA SSO will replace this.</p>
-        </form>
+    <div className="bg-primary relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden p-4">
+      <div className="bg-background text-foreground z-1 flex max-w-96 flex-col gap-4 rounded-lg p-8">
+        <div>
+          <Logo variant="dark" />
+        </div>
+        <div className="text-muted-foreground text-sm">
+          This is a placeholder login screen to be replaced by UWA SSO.
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-sm">UWA ID</label>
+          <Input placeholder="e.g. 12345678" value={id} onValueChange={setId} />
+          <div className="text-destructive text-sm empty:hidden">{error}</div>
+        </div>
+
+        <SubmitButton disabled={working} onClick={handleSubmit}>
+          Log In
+        </SubmitButton>
       </div>
     </div>
   );

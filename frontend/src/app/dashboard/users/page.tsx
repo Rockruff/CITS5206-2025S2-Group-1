@@ -4,9 +4,9 @@ import { BubblesIcon, CircleXIcon, LoaderCircleIcon } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
-import { AddUserToGroupDialog, CreateUserDialog, RemoveUserFromGroupDialog } from "./dialogs";
-import { User, UserGroup, useGroups, useUsers } from "@/api/users";
-import UserSelect from "@/components/app/user-select";
+import { AddUserToGroupDialog, CreateUserDialog, DeleteUserDialog, RemoveUserFromGroupDialog } from "./dialogs";
+import { UserGroup, listGroups } from "@/api/groups";
+import { User, listUsers } from "@/api/users";
 import TableHeader from "@/components/common/orderby";
 import AppPagination from "@/components/common/pager";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,9 @@ import {
   MenubarItem,
   MenubarMenu,
   MenubarSeparator,
+  MenubarSub,
+  MenubarSubContent,
+  MenubarSubTrigger,
   MenubarTrigger,
 } from "@/components/ui/menubar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,10 +41,9 @@ export default function Users() {
     page_size: 10,
   });
 
-  const ureq = useUsers(query);
-  const greq = useGroups();
+  const ureq = listUsers(query);
+  const greq = listGroups();
 
-  const createUserDialog = CreateUserDialog();
   const addUserToGroupDialog = AddUserToGroupDialog(selectedUsers, selectedGroups);
   const removeUserFromGroupDialog = RemoveUserFromGroupDialog(selectedUsers, selectedGroups);
 
@@ -57,7 +59,7 @@ export default function Users() {
           <Input
             type="text"
             value={query.search}
-            onChange={(e) => setQuery({ search: e.target.value, page: 1 })}
+            onValueChange={(value) => setQuery({ search: value, page: 1 })}
             placeholder="Search User..."
           />
 
@@ -94,20 +96,32 @@ export default function Users() {
             </Select>
           </div>
 
-          <UserSelect selection={selectedUsers} />
-
           <Menubar>
             <MenubarMenu>
               <MenubarTrigger>...</MenubarTrigger>
               <MenubarContent>
-                <MenubarItem onClick={createUserDialog.open}>Create New User</MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem onClick={addUserToGroupDialog.open}>Add To Group</MenubarItem>
-                <MenubarItem onClick={removeUserFromGroupDialog.open}>Remove From Group</MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem>Delete Selected User</MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem>Import Users</MenubarItem>
+                {selectedUsers.length > 0 && (
+                  <>
+                    <MenubarSub>
+                      <MenubarSubTrigger>Selected {selectedUsers.length} Users</MenubarSubTrigger>
+                      <MenubarSubContent>
+                        <MenubarItem onClick={() => selectedUsers.clear()}>Clear Selection</MenubarItem>
+                        <MenubarSeparator />
+                        <MenubarItem onClick={addUserToGroupDialog.open}>Assign to Group</MenubarItem>
+                        <MenubarItem onClick={removeUserFromGroupDialog.open}>Remove From Group</MenubarItem>
+                        <MenubarSeparator />
+
+                        <DeleteUserDialog selectedUsers={selectedUsers}>
+                          <MenubarItem onSelect={(e) => e.preventDefault()}>Delete</MenubarItem>
+                        </DeleteUserDialog>
+                      </MenubarSubContent>
+                    </MenubarSub>
+                    <MenubarSeparator />
+                  </>
+                )}
+                <CreateUserDialog selectedUsers={selectedUsers}>
+                  <MenubarItem onSelect={(e) => e.preventDefault()}>Create User</MenubarItem>
+                </CreateUserDialog>
               </MenubarContent>
             </MenubarMenu>
           </Menubar>
@@ -119,10 +133,10 @@ export default function Users() {
               <LoaderCircleIcon className="animate-spin" />
               <span className="text-sm">Loading Data...</span>
             </div>
-          ) : !ureq.data || ureq.error ? (
+          ) : ureq.error ? (
             <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
               <CircleXIcon />
-              <span className="text-sm">{`${ureq.error}`}</span>
+              <span className="text-sm">{ureq.error.error}</span>
             </div>
           ) : ureq.data.items.length === 0 ? (
             <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
@@ -179,10 +193,7 @@ export default function Users() {
                     </td>
                     <td>
                       <div className="flex items-center gap-4">
-                        <img
-                          className="size-10 flex-none rounded-full"
-                          src={`https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(user.name)}`}
-                        />
+                        <img className="size-10 flex-none rounded-full" src={user.avatar} />
                         <Link href={`/dashboard/users/${user.id}`} className="hoctive:underline overflow-hidden">
                           <div className="truncate text-sm">{user.name}</div>
                           <div className="text-xs before:content-['('] after:content-[')']">
@@ -197,17 +208,11 @@ export default function Users() {
                       <div className="text-sm lowercase [&:first-letter]:uppercase">{user.role}</div>
                     </td>
                     <td>
-                      <div className="flex justify-center gap-2">
-                        {query.group ? (
-                          <Button size="sm" variant="default">
-                            Remove
-                          </Button>
-                        ) : (
-                          <Button size="sm" variant="destructive">
-                            Delete
-                          </Button>
-                        )}
-                      </div>
+                      <DeleteUserDialog user={user} selectedUsers={selectedUsers}>
+                        <Button size="sm" variant="destructive">
+                          Delete
+                        </Button>
+                      </DeleteUserDialog>
                     </td>
                   </tr>
                 ))}
@@ -228,7 +233,6 @@ export default function Users() {
         </div>
       </div>
 
-      {createUserDialog.node}
       {addUserToGroupDialog.node}
       {removeUserFromGroupDialog.node}
     </>

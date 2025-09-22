@@ -45,12 +45,7 @@ export default function Trainings() {
 
       <div className="bg-background overflow-hidden rounded-lg shadow">
         <div className="flex flex-col gap-4 px-4 py-3 md:flex-row md:items-center">
-          <Input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search trainings..."
-          />
+          <Input type="text" value={search} onValueChange={setSearch} placeholder="Search trainings..." />
           <div className="ml-auto flex items-center gap-2">
             <Button onClick={() => {}}>New Training</Button>
           </div>

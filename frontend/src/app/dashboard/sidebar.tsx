@@ -3,7 +3,8 @@
 import { BookOpenText, ChartSpline, CircleGauge, CircleUser, FolderDown, LogOut, Menu, Users } from "lucide-react";
 import { createContext, useContext, useState } from "react";
 
-import { useAuth } from "../../hooks/auth";
+import { logout } from "@/api/common";
+import { getCurrentUser } from "@/api/users";
 import { ButtonIconOnly, ButtonText } from "@/components/common/button";
 import Transition from "@/components/common/transition";
 import { Button } from "@/components/ui/button";
@@ -18,12 +19,13 @@ import {
 } from "@/components/ui/dialog";
 import { useResponsive } from "@/hooks/responsive";
 import { useScrollLock } from "@/hooks/scroll-lock";
-
-// 👈 added import
+import { assert } from "@/lib/utils";
 
 function SidebarContent() {
+  const { data: user } = getCurrentUser();
+  assert(user, "User should already be logged in when viewing this page");
+
   const { isMobileMode, setIsMobileSidebarOpen } = useSidebar();
-  const { logout } = useAuth(); // 👈 added
   const closeMobileSidebar = () => isMobileMode && setIsMobileSidebarOpen(false);
 
   return (
@@ -35,14 +37,14 @@ function SidebarContent() {
             <ButtonText href="/dashboard" icon={CircleGauge} onClick={closeMobileSidebar}>
               Dashboard
             </ButtonText>
-            <ButtonText href="/dashboard/users" icon={Users} onClick={closeMobileSidebar}>
+            <ButtonText href="/dashboard/users" icon={CircleUser} onClick={closeMobileSidebar}>
               Users
             </ButtonText>
-            <ButtonText href="/dashboard/groups" icon={CircleUser} onClick={closeMobileSidebar}>
+            <ButtonText href="/dashboard/groups" icon={Users} onClick={closeMobileSidebar}>
               Groups
             </ButtonText>
             <ButtonText href="/dashboard/trainings" icon={BookOpenText} onClick={closeMobileSidebar}>
-              Training Programs
+              Trainings
             </ButtonText>
           </div>
           <div className="flex flex-col gap-1">
@@ -75,15 +77,7 @@ function SidebarContent() {
                       No
                     </Button>
                   </DialogClose>
-                  {/* 👇 changed this button to call logout */}
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      logout();
-                    }}
-                  >
-                    Yes
-                  </Button>
+                  <Button onClick={logout}>Yes</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -92,13 +86,10 @@ function SidebarContent() {
       </div>
 
       <div className="flex h-20 items-center gap-4 px-4">
-        <img
-          className="size-12 flex-none rounded-full object-cover"
-          src="https://student.sims.uwa.edu.au/connect/webconnect?pagecd=UCPEIMAGE"
-        />
+        <img className="size-12 flex-none rounded-full object-cover" src={user.avatar} />
         <div>
-          <div className="line-clamp-2 text-xs/4 font-semibold break-all">Your Name</div>
-          <div className="mt-1 truncate text-[.6em]/none before:content-['('] after:content-[')']">00000000</div>
+          <div className="line-clamp-2 text-xs/4 font-semibold break-all">{user.name}</div>
+          <div className="mt-1 truncate text-[.6em]/none before:content-['('] after:content-[')']">{user.id}</div>
         </div>
       </div>
     </div>
