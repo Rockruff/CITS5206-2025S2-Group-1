@@ -1,4 +1,5 @@
 //For creating a new group
+//used in groups_client.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -14,6 +15,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
+//For creating a new group
+//used in groups_client.tsx
 
 //For creating a new group
 
