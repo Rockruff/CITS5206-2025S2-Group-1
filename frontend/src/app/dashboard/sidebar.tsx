@@ -3,6 +3,7 @@
 import { BookOpenText, ChartSpline, CircleGauge, FolderDown, LogOut, Menu, Users } from "lucide-react";
 import { createContext, useContext, useState } from "react";
 
+import { useAuth } from "../../hooks/auth";
 import { ButtonIconOnly, ButtonText } from "@/components/common/button";
 import Transition from "@/components/common/transition";
 import { Button } from "@/components/ui/button";
@@ -18,8 +19,11 @@ import {
 import { useResponsive } from "@/hooks/responsive";
 import { useScrollLock } from "@/hooks/scroll-lock";
 
+// 👈 added import
+
 function SidebarContent() {
   const { isMobileMode, setIsMobileSidebarOpen } = useSidebar();
+  const { logout } = useAuth(); // 👈 added
   const closeMobileSidebar = () => isMobileMode && setIsMobileSidebarOpen(false);
 
   return (
@@ -68,7 +72,15 @@ function SidebarContent() {
                       No
                     </Button>
                   </DialogClose>
-                  <Button>Yes</Button>
+                  {/* 👇 changed this button to call logout */}
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      logout();
+                    }}
+                  >
+                    Yes
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -138,8 +150,6 @@ function Sidebar() {
   // Prevent body scroll if mobile sidebar is shown
   useScrollLock(!!isMobileMode && isMobileSidebarOpen);
 
-  // media query result unknown yet due to SSR (isMobileMode === undefined)
-  // or is indeed not mobile mode (isMobileMode === false)
   if (!isMobileMode) {
     return (
       <aside className="max-md:hidden md:contents">
