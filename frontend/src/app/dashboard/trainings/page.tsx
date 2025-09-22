@@ -1,97 +1,134 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from "react";
 
-type Training = {
-  training_course: string;
-  data_source?: string;
-  upload_method?: string;
-};
+import { Training, listTrainings } from "@/api/trainings";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 export default function Trainings() {
-  const [data, setData] = useState<Training[]>([]);
-  const [q, setQ] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [trainings, setTrainings] = useState<Training[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const fetchTrainings = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await listTrainings();
+      setTrainings(data);
+    } catch (err: any) {
+      setError(err.message || "Failed to load trainings");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoading(true);
-        const res = await fetch('/data/trainings.json', { cache: 'no-store' });
-        if (!res.ok) throw new Error(`Failed to load trainings: ${res.status}`);
-        const json: Training[] = await res.json();
-        if (!cancelled) setData(json);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? 'Failed to load trainings');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
+    fetchTrainings();
   }, []);
 
-  const filtered = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    if (!term) return data;
-    return data.filter(t =>
-      (t.training_course || '').toLowerCase().includes(term) ||
-      (t.data_source || '').toLowerCase().includes(term) ||
-      (t.upload_method || '').toLowerCase().includes(term)
-    );
-  }, [q, data]);
-
-  return (
-    <div className="p-6 space-y-6">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Trainings</h1>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search trainings, source, upload method..."
-          className="w-full sm:w-80 rounded-xl border px-4 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </header>
-
-      {loading && <div className="text-sm text-gray-600">Loading trainings…</div>}
-      {error && <div className="text-sm text-red-600">{error}</div>}
-
-      {!loading && !error && (
-        <div className="overflow-x-auto rounded-2xl border shadow-sm">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 text-left">
-              <tr>
-                <th className="px-4 py-3 font-medium">Training Course</th>
-                <th className="px-4 py-3 font-medium">Data Source</th>
-                <th className="px-4 py-3 font-medium">Upload Method</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((t, i) => (
-                <tr key={`${t.training_course}-${i}`} className={i % 2 ? 'bg-white' : 'bg-gray-50/50'}>
-                  <td className="px-4 py-3 font-medium">{t.training_course}</td>
-                  <td className="px-4 py-3"><Badge>{t.data_source || '—'}</Badge></td>
-                  <td className="px-4 py-3">{t.upload_method || '—'}</td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td className="px-4 py-6 text-gray-500" colSpan={3}>No trainings match your search.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+  const filteredTrainings = trainings.filter(
+    (training) =>
+      training.name.toLowerCase().includes(search.toLowerCase()) ||
+      training.description.toLowerCase().includes(search.toLowerCase()),
   );
-}
 
-function Badge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium">
-      {children}
-    </span>
+    <>
+      <div>
+        <h1 className="text-2xl font-bold">Training Management</h1>
+        <p className="text-muted-foreground">Manage training courses and their configurations</p>
+      </div>
+
+      <div className="bg-background overflow-hidden rounded-lg shadow">
+        <div className="flex flex-col gap-4 px-4 py-3 md:flex-row md:items-center">
+          <Input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search trainings..."
+          />
+          <div className="ml-auto flex items-center gap-2">
+            <Button onClick={() => {}}>New Training</Button>
+          </div>
+        </div>
+
+        <div className="contents [&>*]:h-92 [&>*]:border-y">
+          {loading ? (
+            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
+              <span className="text-sm">Loading Data...</span>
+            </div>
+          ) : error ? (
+            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
+              <span className="text-sm">{error}</span>
+            </div>
+          ) : filteredTrainings.length === 0 ? (
+            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
+              <span className="text-sm">No trainings found</span>
+            </div>
+          ) : (
+            <table
+              className={cn(
+                "[&_tbody_tr]:h-16 [&_thead_tr]:h-12",
+                "flex flex-col overflow-x-auto overflow-y-hidden",
+                "[&_tbody]:flex-1 [&_tbody]:overflow-y-auto",
+                "[&_tbody]:mb-[-1px] [&_tr]:border-b",
+                "[&_tr]:flex [&_tr]:items-stretch [&_tr]:gap-8 [&_tr]:px-8",
+                "[&_th,td]:flex [&_th,td]:items-center [&_th,td]:gap-2",
+                "[&_th,td]:w-20 [&_th,td]:nth-1:w-4 [&_th,td]:nth-2:flex-1",
+              )}
+            >
+              <thead>
+                <tr>
+                  <th>
+                    <div className="text-xs font-bold">Name</div>
+                  </th>
+                  <th>
+                    <div className="text-xs font-bold">Type</div>
+                  </th>
+                  <th>
+                    <div className="text-xs font-bold">Expiry</div>
+                  </th>
+                  <th>
+                    <div className="text-xs font-bold">Actions</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTrainings.map((training) => (
+                  <tr key={training.id}>
+                    <td>
+                      <div className="flex flex-col">
+                        <div className="text-sm font-medium">{training.name}</div>
+                        <div className="text-muted-foreground max-w-xs truncate text-xs">{training.description}</div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="text-sm">{training.type}</div>
+                    </td>
+                    <td>
+                      <div className="text-sm">{training.expiry === 0 ? "No expiry" : `${training.expiry} days`}</div>
+                    </td>
+                    <td>
+                      <div className="flex justify-center gap-2">
+                        <Button size="sm" variant="outline">
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="destructive">
+                          Delete
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </>
   );
 }

@@ -1,16 +1,36 @@
 [
   { "training_course": "WHS Induction", "data_source": "LMS", "upload_method": "Excel Template" },
   { "training_course": "WHS Risk Management", "data_source": "LMS", "upload_method": "Excel Template" },
-  { "training_course": "Silica Awareness Training", "data_source": "Forms/Sharepoint", "upload_method": "Excel Template" },
+  {
+    "training_course": "Silica Awareness Training",
+    "data_source": "Forms/Sharepoint",
+    "upload_method": "Excel Template"
+  },
   { "training_course": "Lab Safety Course", "data_source": "TryBooking", "upload_method": "API integration" },
-  { "training_course": "Unsealed Radioisotopes course", "data_source": "TryBooking", "upload_method": "API integration" },
+  {
+    "training_course": "Unsealed Radioisotopes course",
+    "data_source": "TryBooking",
+    "upload_method": "API integration"
+  },
   { "training_course": "Laser Safety Course", "data_source": "TryBooking", "upload_method": "API integration" },
-  { "training_course": "Snorkeler Fitness Assessment", "data_source": "TryBooking", "upload_method": "API integration" },
+  {
+    "training_course": "Snorkeler Fitness Assessment",
+    "data_source": "TryBooking",
+    "upload_method": "API integration"
+  },
   { "training_course": "Diver Assessment", "data_source": "TryBooking", "upload_method": "API integration" },
   { "training_course": "Dive Supervisor Course", "data_source": "TryBooking", "upload_method": "API integration" },
   { "training_course": "UWA Scientific Diver Course", "data_source": "TryBooking", "upload_method": "API integration" },
   { "training_course": "Camms Training", "data_source": "Forms/Sharepoint", "upload_method": "Excel Template" },
   { "training_course": "Fire Warden Training", "data_source": "Forms/Sharepoint", "upload_method": "Excel Template" },
-  { "training_course": "First Aid", "data_source": "Face to Face/External", "upload_method": "Excel Template or user input" },
-  { "training_course": "Local Area WHS Induction", "data_source": "Face to Face", "upload_method": "Excel Template or user input" }
+  {
+    "training_course": "First Aid",
+    "data_source": "Face to Face/External",
+    "upload_method": "Excel Template or user input"
+  },
+  {
+    "training_course": "Local Area WHS Induction",
+    "data_source": "Face to Face",
+    "upload_method": "Excel Template or user input"
+  }
 ]
