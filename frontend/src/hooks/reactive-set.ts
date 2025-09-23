@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-export interface Set<T> {
+export interface ReactiveSet<T> {
   /** Set-like interfaces */
   add: (...items: T[]) => void;
   remove: (...items: T[]) => void;
@@ -12,7 +12,7 @@ export interface Set<T> {
   map: <R>(callback: (item: T, index: number) => R) => R[];
 }
 
-export function useSet<T>(initialItems: T[] = []): Set<T> {
+export function useSet<T>(initialItems: T[] = []): ReactiveSet<T> {
   const set = useMemo(() => new Set<T>(initialItems), []);
 
   const [, setVersion] = useState(0);

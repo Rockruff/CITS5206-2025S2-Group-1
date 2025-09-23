@@ -120,7 +120,9 @@ class UserViewSet(viewsets.GenericViewSet):
     def destroy(self, request, *args, **kwargs):
         user = self.get_object()
         if user.id == request.user.id:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Cannot delete current user"}, status=status.HTTP_400_BAD_REQUEST
+            )
         user.delete()
         return Response()
 

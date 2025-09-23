@@ -1,6 +1,6 @@
-//Uses create_dialog and delete_button components and displays the groups table with search functionality
 "use client";
 
+import { PlusIcon } from "lucide-react";
 import * as React from "react";
 
 import { CreateGroupDialog } from "./create_dialog";
@@ -8,85 +8,95 @@ import DeleteGroupButton from "./delete_button";
 import { UpdateGroupDialog } from "./update_dialog";
 import { listGroups } from "@/api/groups";
 import { Button } from "@/components/ui/button";
-
-//Uses create_dialog and delete_button components and displays the groups table with search functionality
-
-//Uses create_dialog and delete_button components and displays the groups table with search functionality
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { cn, kwMatch } from "@/lib/utils";
 
 export default function () {
   const { data: groups } = listGroups();
 
   const [q, setQ] = React.useState("");
 
-  const filtered = React.useMemo(() => {
-    const term = q.trim().toLowerCase();
-    if (!term) return groups;
-    return groups.filter(
-      (g) => (g.name || "").toLowerCase().includes(term) || (g.description || "").toLowerCase().includes(term),
-    );
-  }, [q, groups]);
+  const filtered = React.useMemo(
+    () => groups.filter((g) => kwMatch(g.name, q) || kwMatch(g.description, q)),
+    [q, groups],
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Header row with title on the left and search + create on the right */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Groups</h1>
-          <p className="text-muted-foreground text-sm">List of user groups in the system.</p>
-        </div>
+    <>
+      <div>
+        <h1 className="text-xl font-bold">User Group Management</h1>
+        <p className="text-muted-foreground">Manage groups and their training assignments.</p>
+      </div>
 
-        <div className="flex items-center gap-3">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search groups by name or description…"
-            className="w-full rounded-xl border px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none sm:w-80"
-            aria-label="Search groups"
-          />
-
+      <div className="bg-background flex flex-1 flex-col overflow-hidden rounded-lg shadow">
+        <div className="flex h-16 items-center gap-4 px-4">
+          <Input value={q} onValueChange={setQ} placeholder="Search groups by name or description…" />
           <CreateGroupDialog>
-            <Button>Create Group</Button>
+            <Button size="icon">
+              <PlusIcon />
+            </Button>
           </CreateGroupDialog>
         </div>
-      </div>
 
-      <div className="rounded-2xl bg-white p-4 shadow">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Description</th>
-                <th className="px-3 py-2">Created</th>
-                <th className="px-3 py-2">Action</th>
+        <table
+          className={cn(
+            "flex-1 border-y",
+            "[&_tbody_tr]:h-16 [&_thead_tr]:h-12", // height config
+            "flex flex-col overflow-x-auto overflow-y-hidden [&_thead,tbody]:min-w-200", // x-scrollable table
+            "[&_tbody]:flex-1 [&_tbody]:overflow-y-auto", // y-scrollable tbody
+            "[&_tbody]:mb-[-1px] [&_tr]:border-b", // borders, with deduplication at bottom
+            "[&_tr]:flex [&_tr]:items-stretch [&_tr]:gap-8 [&_tr]:px-8", // row style
+            "[&_th,td]:flex [&_th,td]:items-center [&_th,td]:gap-2", // cell style
+            "[&_th,td]:w-20 [&_th,td]:nth-1:w-4 [&_th,td]:nth-2:w-36 [&_th,td]:nth-3:flex-1 [&_th,td]:nth-5:w-40", // column width
+          )}
+        >
+          <thead>
+            <tr>
+              <th>
+                <Checkbox />
+              </th>
+              <th>
+                <div className="text-xs font-bold">Name</div>
+              </th>
+              <th>
+                <div className="text-xs font-bold">Description</div>
+              </th>
+              <th>
+                <div className="text-xs font-bold">Created</div>
+              </th>
+              <th>
+                <div className="mx-auto text-xs font-bold">Action</div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((g) => (
+              <tr key={g.id}>
+                <td>
+                  <Checkbox />
+                </td>
+                <td className="truncate text-sm">{g.name}</td>
+                <td className="truncate text-sm">{g.description}</td>
+                <td className="text-sm"> {new Date(g.timestamp).toLocaleDateString()}</td>
+                <td className="text-sm">
+                  <DeleteGroupButton group={g} />
+                  <UpdateGroupDialog group={g}>
+                    <Button size="sm">Update</Button>
+                  </UpdateGroupDialog>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filtered.map((g) => (
-                <tr key={g.id} className="border-b last:border-0">
-                  <td className="px-3 py-2 font-medium">{g.name}</td>
-                  <td className="px-3 py-2">{g.description?.trim() ? g.description : "—"}</td>
-                  <td className="px-3 py-2">{new Date(g.timestamp).toLocaleDateString()}</td>
-                  <td className="px-3 py-2">
-                    <DeleteGroupButton id={g.id} name={g.name} />
-                    <UpdateGroupDialog group={g}>
-                      <Button>Update</Button>
-                    </UpdateGroupDialog>
-                  </td>
-                </tr>
-              ))}
-
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="text-muted-foreground px-3 py-8 text-center">
-                    No groups match your search.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            ))}
+            {filtered.length === 0 && (
+              <tr className="p-0! [&,&>*]:size-full!">
+                <td colSpan={5} className="text-muted-foreground justify-center">
+                  No groups match your search.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
-    </div>
+    </>
   );
 }

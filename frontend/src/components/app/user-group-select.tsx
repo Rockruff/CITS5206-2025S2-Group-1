@@ -1,89 +1,51 @@
 "use client";
 
-import { CheckIcon, ChevronsUpDownIcon, LoaderCircleIcon, SearchIcon } from "lucide-react";
-import { useState } from "react";
+import { MultiSelect } from "../common/multi-select";
+import { getGroup, listGroups } from "@/api/groups";
+import { kwMatch } from "@/lib/utils";
 
-import { UserGroup, listGroups } from "@/api/groups";
-import { Button } from "@/components/ui/button";
-import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Set } from "@/hooks/selection-v2";
-import { cn, kwMatch } from "@/lib/utils";
+function fetchData(search: string) {
+  const { data: groups, isLoading, error } = listGroups();
 
-const renderItem = (groups: UserGroup[], id: string) => {
-  const group = groups.find((group) => group.id === id);
+  if (!groups)
+    return {
+      data: [],
+      isLoading,
+      error,
+    };
+
+  return {
+    data: groups.filter((group) => kwMatch(group.name, search)).map((group) => group.id),
+    isLoading,
+    error,
+  };
+}
+
+function renderData({ value: id }: { value: string }) {
+  const { data: group } = getGroup(id);
   if (!group) return null;
   return <span className="truncate">{group.name}</span>;
-};
+}
 
-export default function UserGroupSelect({
-  selection,
+export function UserGroupSelectV2({
+  disabled,
+  value,
+  onValueChange,
   className = "w-64",
 }: {
-  selection: Set<string>;
+  disabled?: boolean;
+  value: string[];
+  onValueChange: (v: string[]) => void;
   className?: string;
 }) {
-  const [searchQuery, setSearchQuery] = useState<string>("");
-
-  const { data: groups, isLoading } = listGroups();
-
-  const [open, setOpen] = useState(false);
-
-  const unSelectedItems = groups
-    .filter((item) => !selection.has(item.id))
-    .filter((item) => kwMatch(item.name, searchQuery));
-
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" aria-expanded={open} className={cn("justify-between", className)}>
-          <span className="truncate">{selection.length} Selected</span>
-          <ChevronsUpDownIcon className="opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" onWheel={(e) => e.stopPropagation()}>
-        <Command className="max-h-[40vh]">
-          <div className="flex h-9 flex-none items-center gap-2 border-b px-3">
-            <SearchIcon className="size-4 shrink-0 opacity-50" />
-            <input
-              className="w-full bg-transparent text-sm outline-hidden"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search..."
-            />
-          </div>
-          <CommandList>
-            {selection.length > 0 && (
-              <CommandGroup className="border-b">
-                {selection.map((id) => (
-                  <CommandItem key={id} value={id} onSelect={() => selection.remove(id)}>
-                    {renderItem(groups, id)}
-                    <CheckIcon className="ml-auto" />
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-            {isLoading ? (
-              <div className="text-muted-foreground flex h-10 items-center justify-center gap-2">
-                <LoaderCircleIcon className="size-4 animate-spin" />
-                <span className="text-sm/none">Loading...</span>
-              </div>
-            ) : unSelectedItems.length === 0 ? (
-              <div className="text-muted-foreground flex h-10 items-center justify-center gap-2">
-                <span className="text-sm/none">{!searchQuery ? "Search to find options" : "No options found"}</span>
-              </div>
-            ) : (
-              <CommandGroup>
-                {unSelectedItems.map((item) => (
-                  <CommandItem key={item.id} value={item.id} onSelect={() => selection.add(item.id)}>
-                    {renderItem(groups, item.id)}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <MultiSelect
+      disabled={disabled}
+      className={className}
+      value={value}
+      onValueChange={onValueChange}
+      fetchData={fetchData}
+      renderData={renderData}
+    />
   );
 }

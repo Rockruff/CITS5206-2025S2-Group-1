@@ -1,24 +1,41 @@
 "use client";
 
-import { CheckIcon, ChevronsUpDownIcon, LoaderCircleIcon, SearchIcon } from "lucide-react";
-import { useState } from "react";
+import { MultiSelect } from "../common/multi-select";
+import { getUser, listUsers } from "@/api/users";
 
-import { User, listUsers } from "@/api/users";
-import { Button } from "@/components/ui/button";
-import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Selection } from "@/hooks/selection";
-import { cn } from "@/lib/utils";
+function fetchData(search: string) {
+  const { data, isLoading, error } = listUsers({ search });
 
-const renderItem = (user: User) => {
+  if (!search)
+    return {
+      data: [],
+      needMoreSearch: true,
+    };
+
+  if (!data)
+    return {
+      data: [],
+      isLoading,
+      error,
+    };
+
+  const users = data.items;
+
+  return {
+    data: users.map((user) => user.id),
+    isLoading,
+    error,
+  };
+}
+
+function renderData({ value: id }: { value: string }) {
+  const { data: user } = getUser(id);
+  if (!user) return null;
+
   return (
     <div className="flex items-center gap-3">
       <div className="h-10 w-10 flex-shrink-0">
-        <img
-          className="h-10 w-10 rounded-full"
-          src={`https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(user.name)}`}
-          alt={user.name}
-        />
+        <img className="h-10 w-10 rounded-full" src={user.avatar} alt={user.name} />
       </div>
       <div>
         <div className="text-sm">{user.name}</div>
@@ -26,74 +43,27 @@ const renderItem = (user: User) => {
       </div>
     </div>
   );
-};
+}
 
-export default function UserSelect({
-  selection,
+export function UserSelect({
+  disabled,
+  value,
+  onValueChange,
   className = "w-64",
 }: {
-  selection: Selection<User>;
-  className?: string; // should be used to set width only
+  disabled?: boolean;
+  value: string[];
+  onValueChange: (v: string[]) => void;
+  className?: string;
 }) {
-  const [searchQuery, setSearchQuery] = useState<string>("");
-
-  const { data, error, isLoading } = listUsers({ search: searchQuery });
-
-  const [open, setOpen] = useState(false);
-  const candidateItems = data.items;
-  const unSelectedItems = candidateItems.filter((item) => !selection.has(item));
-
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" aria-expanded={open} className={cn("justify-between", className)}>
-          <span className="truncate">{selection.length} Selected</span>
-          <ChevronsUpDownIcon className="opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" onWheel={(e) => e.stopPropagation()}>
-        <Command className="max-h-[40vh]">
-          <div className="flex h-9 flex-none items-center gap-2 border-b px-3">
-            <SearchIcon className="size-4 shrink-0 opacity-50" />
-            <input
-              className="w-full bg-transparent text-sm outline-hidden"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search..."
-            ></input>
-          </div>
-          <CommandList>
-            {selection.length > 0 && (
-              <CommandGroup className="border-b">
-                {selection.map((item) => (
-                  <CommandItem key={item.id} value={item.id} onSelect={() => selection.remove(item)}>
-                    {renderItem(item)}
-                    <CheckIcon className="ml-auto" />
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-            {isLoading ? (
-              <div className="text-muted-foreground flex h-10 items-center justify-center gap-2">
-                <LoaderCircleIcon className="size-4 animate-spin" />
-                <span className="text-sm/none">Loading...</span>
-              </div>
-            ) : unSelectedItems.length === 0 ? (
-              <div className="text-muted-foreground flex h-10 items-center justify-center gap-2">
-                <span className="text-sm/none">{!searchQuery ? "Search to find options" : "No options found"}</span>
-              </div>
-            ) : (
-              <CommandGroup>
-                {unSelectedItems.map((item) => (
-                  <CommandItem key={item.id} value={item.id} onSelect={() => selection.add(item)}>
-                    {renderItem(item)}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <MultiSelect
+      disabled={disabled}
+      className={className}
+      value={value}
+      onValueChange={onValueChange}
+      fetchData={fetchData}
+      renderData={renderData}
+    />
   );
 }

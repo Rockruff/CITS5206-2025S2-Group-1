@@ -1,6 +1,7 @@
 "use client";
 
 import { BookOpenText, ChartSpline, CircleGauge, CircleUser, FolderDown, LogOut, Menu, Users } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { createContext, useContext, useState } from "react";
 
 import { logout } from "@/api/common";
@@ -19,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { useResponsive } from "@/hooks/responsive";
 import { useScrollLock } from "@/hooks/scroll-lock";
-import { assert } from "@/lib/utils";
+import { assert, cn } from "@/lib/utils";
 
 function SidebarContent() {
   const { data: user } = getCurrentUser();
@@ -30,7 +31,7 @@ function SidebarContent() {
 
   return (
     <div className="bg-primary text-on-primary flex h-[var(--h-sidebar)] w-[var(--w-sidebar)] flex-col">
-      <div className="flex-1 overflow-scroll border-y border-current/10">
+      <div className="overflow-y-auto-scroll flex-1 overflow-x-hidden border-y border-current/10">
         <nav className="flex flex-col gap-4 p-4">
           <div className="flex flex-col gap-1">
             <h2 className="text-xs/6 uppercase opacity-80">Main</h2>
@@ -177,7 +178,7 @@ function Sidebar() {
       <Transition
         key="mobile-sidebar"
         show={isMobileSidebarOpen}
-        className="fixed z-[var(--z-sidebar)] h-[var(--h-sidebar)] contain-strict"
+        className="fixed z-[var(--z-sidebar)] h-[var(--h-sidebar)] overflow-hidden"
         type="transition-[width]"
         before="hidden"
         start="w-0"
@@ -190,12 +191,26 @@ function Sidebar() {
 }
 
 export default function WithSidebar({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
   return (
-    <div className="max-md:contents md:flex">
+    <div className="max-md:contents md:flex md:[&>main]:flex-1">
       <Sidebar />
-      <main className="md:h-[var(--h-sidebar)] md:flex-1 md:overflow-y-auto">
-        <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-8">{children}</div>
-      </main>
+
+      {["/dashboard/users", "/dashboard/groups"].includes(pathname) ? (
+        <main
+          className={cn(
+            "flex flex-col gap-4 p-4 md:gap-8 md:p-8", // expreimental alternative layout
+            "h-[var(--h-sidebar)] overflow-hidden",
+          )}
+        >
+          {children}
+        </main>
+      ) : (
+        <main className="md:h-[var(--h-sidebar)] md:overflow-y-auto">
+          <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-8">{children}</div>
+        </main>
+      )}
     </div>
   );
 }

@@ -1,29 +1,45 @@
 from core.permissions import IsAdmin
+from django.db import transaction
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from core.models import UserGroup, User
-from core.serializers.groups import UserGroupSerializer
+from core.serializers.groups import (
+    UserGroupSerializer,
+    GroupBatchManageUsersSerializer,
+    GroupBatchManageTrainingsSerializer,
+)
 
 
 class UserGroupViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdmin]
-    """
-    API endpoints for creating, updating, editing, deleting user groups,
-    and adding users to groups.
-    """
     queryset = UserGroup.objects.all().order_by("-timestamp")
     serializer_class = UserGroupSerializer
 
-    # POST /groups/{id}/add_user/
-    @action(detail=True, methods=["post"])
-    def add_user(self, request, pk=None):
-        group = self.get_object()
-        user_id = request.data.get("user_id")
+    # PATCH /groups/batch/users
+    @action(detail=False, methods=["patch"], url_path="batch/users")
+    def batch_manage_users(self, request):
+        serializer = GroupBatchManageUsersSerializer(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
 
-        try:
-            user = User.objects.get(pk=user_id)
-            group.users.add(user)
-            return Response({"status": "user added"}, status=status.HTTP_200_OK)
-        except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_400_BAD_REQUEST)
+        with transaction.atomic():
+            for item in serializer.validated_data:
+                group = item["group"]
+                group.users.add(*item["add"])
+                group.users.remove(*item["remove"])
+
+        return Response()
+
+    # PATCH /groups/batch/trainings
+    @action(detail=False, methods=["patch"], url_path="batch/trainings")
+    def batch_manage_trainings(self, request):
+        serializer = GroupBatchManageTrainingsSerializer(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            for item in serializer.validated_data:
+                group = item["group"]
+                group.trainings.add(*item["add"])
+                group.trainings.remove(*item["remove"])
+
+        return Response()

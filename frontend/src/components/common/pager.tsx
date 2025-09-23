@@ -3,8 +3,11 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 interface PaginationProps {
+  // style
+  className?: string;
   // in
   totalItems: number;
   pageSizeOptions: number[];
@@ -17,12 +20,13 @@ interface PaginationProps {
 
 function calculatePageIndex(itemIndex: number, pageSize: number): number {
   // itemIndex is 1-based, pageIndex is 1-based
-  // but a trick here is if itemIndex is 0 (due to totalItems === 0), we will to return 1
-  const pageIndex = Math.floor(itemIndex / pageSize) + 1;
+  // return value can be 0 if itemIndex === 0 due to totalItems === 0
+  const pageIndex = Math.ceil(itemIndex / pageSize);
   return pageIndex;
 }
 
 export default function AppPagination({
+  className,
   totalItems,
   pageSizeOptions,
   pageSize,
@@ -50,20 +54,23 @@ export default function AppPagination({
   if (!Number.isInteger(currentPage)) {
     throw new Error("currentPage must be a positive integer");
   }
-  if (currentPage < 1) currentPage = 1;
   if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const firstDisplayedItem = Math.min((currentPage - 1) * pageSize + 1, totalItems);
+  const lastDisplayedItem = Math.min(currentPage * pageSize, totalItems);
 
   return (
-    <div className="flex items-center gap-2 select-none max-md:flex-col md:justify-between">
-      <div className="flex items-center gap-2">
+    <div className={cn("flex items-center justify-center gap-4 select-none md:justify-between", className)}>
+      <div className="flex items-center gap-2 max-md:hidden">
         <span className="text-muted-foreground text-sm text-nowrap">Items Per Page:</span>
         <Select
           defaultValue={String(pageSize)}
           onValueChange={(value) => {
             const newPageSize = Number(value);
             setPageSize(newPageSize);
-            const firstDisplayedItem = (currentPage - 1) * pageSize + 1; // we do not care if totalItems is 0 here
-            const newCurrentPage = calculatePageIndex(firstDisplayedItem, newPageSize);
+            let newCurrentPage = calculatePageIndex(firstDisplayedItem, newPageSize);
+            if (newCurrentPage < 1) newCurrentPage = 1;
             setCurrentPage(newCurrentPage);
           }}
         >
@@ -79,6 +86,11 @@ export default function AppPagination({
           </SelectContent>
         </Select>
       </div>
+
+      <div className="text-muted-foreground text-sm max-md:hidden">
+        Showing {firstDisplayedItem}-{lastDisplayedItem} of {totalItems} items
+      </div>
+
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}>
           <ChevronLeftIcon />
@@ -93,8 +105,8 @@ export default function AppPagination({
           onChange={(e) => {
             let newCurrentPage = e.target.valueAsNumber;
             if (!Number.isSafeInteger(newCurrentPage)) return;
-            if (newCurrentPage < 1) newCurrentPage = 1;
             if (newCurrentPage > totalPages) newCurrentPage = totalPages;
+            if (newCurrentPage < 1) newCurrentPage = 1;
             setCurrentPage(newCurrentPage);
           }}
         />

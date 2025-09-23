@@ -19,10 +19,8 @@ export function assert(condition: unknown, message?: string): asserts condition 
 }
 
 export function kwMatch(str: string, keyword: string): boolean {
-  const strcased = str.toLowerCase();
-  const words = keyword.split(/\s+/).filter(Boolean);
-  for (const word of words) {
-    if (strcased.indexOf(word.toLowerCase()) < 0) return false;
-  }
-  return true;
+  const strLower = str.toLowerCase().trim();
+  const words = keyword.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return true;
+  return words.every((word) => strLower.includes(word));
 }

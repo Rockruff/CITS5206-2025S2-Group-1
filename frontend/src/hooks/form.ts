@@ -1,28 +1,45 @@
 import { Dispatch, SetStateAction, useRef, useState } from "react";
 
-import { APIError, DRFError } from "@/api/common";
+import { APIError } from "@/api/common";
 
-function formatDRFError(data: DRFError | undefined, key: string) {
-  if (!data) return undefined;
-  const value = data[key];
-  if (!value) return undefined;
-  if (!Array.isArray(value)) return undefined;
-  return value[0]; // first error only
-}
-
-function transformDRFError(err: APIError) {
-  const fallbackError = err.error;
-  if (!err.data) return fallbackError;
-
-  const nonFieldError = formatDRFError(err.data, "non_field_errors");
-  if (nonFieldError) return nonFieldError;
-
-  for (const field in err.data) {
-    const fieldError = formatDRFError(err.data, field);
-    if (fieldError) return `${field}: ${fieldError}`;
+function extractDRFErrorFromObject(data: any): string | undefined {
+  if (!data || typeof data !== "object") {
+    return undefined;
   }
 
-  return fallbackError;
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      const err = extractDRFErrorFromObject(item);
+      if (err) return err;
+    }
+    return undefined;
+  }
+
+  const messages = data.non_field_errors;
+  if (Array.isArray(messages) && messages[0]) {
+    return messages[0];
+  }
+
+  for (const field in data) {
+    const messages = data[field];
+    if (Array.isArray(messages) && messages[0]) {
+      return `${field}: ${messages[0]}`;
+    }
+
+    if (typeof messages === "object") {
+      // list field, has key "0", "1", ... etc
+      const data = messages;
+      const err = extractDRFErrorFromObject(data);
+      if (err) return err;
+    }
+  }
+
+  return undefined;
+}
+
+function transformDRFError({ error, data }: APIError): string {
+  const err = extractDRFErrorFromObject(data);
+  return err || error;
 }
 
 type FormState = {

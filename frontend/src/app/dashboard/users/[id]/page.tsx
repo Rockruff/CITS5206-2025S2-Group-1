@@ -5,38 +5,30 @@ import { use } from "react";
 import { useEffect } from "react";
 
 import { getUser } from "@/api/users";
-import UserGroupSelect from "@/components/app/user-group-select";
+import { UserGroupSelectV2 } from "@/components/app/user-group-select";
 import { ButtonIconOnly } from "@/components/common/button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "@/hooks/form";
-import { useSet } from "@/hooks/selection-v2";
 
 function UserProfileSection({ id: uid }: { id: string }) {
   const { data: user } = getUser(uid);
-
-  const aliases = useSet<string>();
-  const groups = useSet<string>();
 
   const { useField, error, working, reset, submit } = useForm();
 
   const [id, setId] = useField("");
   const [name, setName] = useField("");
   const [role, setRole] = useField("");
+  const [groups, setGroups] = useField<string[]>([]);
 
   useEffect(() => {
     if (!user) return;
     setId(user.id);
     setName(user.name);
     setRole(user.role);
-
-    aliases.clear();
-    aliases.add(...user.aliases);
-
-    groups.clear();
-    groups.add(...user.groups);
+    setGroups(user.groups);
   }, [user]);
 
   if (!user) return null;
@@ -92,7 +84,7 @@ function UserProfileSection({ id: uid }: { id: string }) {
         {/* Groups */}
         <div className="grid gap-2 md:grid-cols-[200px_1fr] md:items-center">
           <label className="text-muted-foreground text-sm font-medium">Groups</label>
-          <UserGroupSelect selection={groups} />
+          <UserGroupSelectV2 value={groups} onValueChange={setGroups} />
         </div>
       </CardContent>
       <CardFooter>

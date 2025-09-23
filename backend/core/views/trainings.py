@@ -8,7 +8,6 @@ from core.serializers.trainings import (
     TrainingSerializer,
     TrainingCreateSerializer,
     TrainingUpdateSerializer,
-    TrainingGroupsPatchSerializer,
 )
 from core.permissions import IsAdmin
 
@@ -101,12 +100,3 @@ class TrainingViewSet(viewsets.GenericViewSet):
         training = self.get_object()
         training.delete()
         return Response()
-
-    # PATCH /trainings/{id}/groups
-    @action(detail=True, methods=["patch"], url_path="groups")
-    def manage_groups(self, request, *args, **kwargs):
-        training = self.get_object()
-        serializer = TrainingGroupsPatchSerializer(instance=training, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(TrainingSerializer(training).data)

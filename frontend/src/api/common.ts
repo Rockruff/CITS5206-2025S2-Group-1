@@ -1,9 +1,6 @@
 import useSWR, { SWRConfiguration, SWRResponse, mutate } from "swr";
 
-// General shape of DRF serializer errors
-export type DRFError = Record<string, string[]>;
-
-export type APIError = { error: string; data?: DRFError };
+export type APIError = { error: string; data?: any };
 
 // --------------------
 // Auth helpers
@@ -55,26 +52,18 @@ async function handleError(response: Response): Promise<APIError> {
     if (typeof data !== "object" || data === null) {
       throw new Error("Response is not a JSON object");
     }
+    if (typeof data.error === "string") {
+      return { error: data.error };
+    }
+    return {
+      error: `HTTP ${response.status}: ${response.statusText}`,
+      data,
+    };
   } catch {
     return {
       error: `HTTP ${response.status}: ${response.statusText}`,
     };
   }
-
-  if (Object.values(data).some((val) => Array.isArray(val) && val.every((msg) => typeof msg === "string"))) {
-    return {
-      error: `HTTP ${response.status}: ${response.statusText}`,
-      data,
-    };
-  }
-
-  if (typeof data.error === "string") {
-    return { error: data.error };
-  }
-
-  return {
-    error: `HTTP ${response.status}: ${response.statusText}`,
-  };
 }
 
 async function request<T>(
@@ -91,7 +80,7 @@ async function request<T>(
 
   const config: RequestInit = { method, headers };
 
-  if (method === "GET" && !(params instanceof FormData)) {
+  if (method === "GET") {
     Object.entries(params).forEach(([key, value]) => {
       if (Array.isArray(value)) {
         value.forEach((v) => url.searchParams.append(key, String(v)));
@@ -102,7 +91,7 @@ async function request<T>(
   } else if (params instanceof FormData) {
     // For file uploads: do not set Content-Type, browser handles it
     config.body = params;
-  } else if (Object.keys(params).length > 0) {
+  } else {
     headers["Content-Type"] = "application/json";
     config.body = JSON.stringify(params);
   }
