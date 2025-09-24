@@ -1,4 +1,5 @@
 import * as api from "@/api/common";
+import { swr } from "@/api/common";
 
 export interface Training {
   id: string;
@@ -34,7 +35,15 @@ export interface ListTrainingResponse {
 }
 
 // API functions
-export async function listTrainings(params?: {
+export function listTrainings() {
+  let { data, error, isLoading } = swr<Training[]>("/api/trainings");
+  if (!data || error || isLoading) {
+    data = [];
+  }
+  return { data, error, isLoading };
+}
+
+export async function listTrainingsWithParams(params?: {
   search?: string;
   type?: string;
   page?: number;

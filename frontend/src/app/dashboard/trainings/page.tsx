@@ -1,40 +1,89 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import * as React from "react";
+import { useState } from "react";
 
-import { Training, listTrainings } from "@/api/trainings";
+import { CreateTrainingDialog } from "./create_dialog";
+import DeleteTrainingButton from "./delete_button";
+import { UpdateTrainingDialog } from "./update_dialog";
+import { listTrainings } from "@/api/trainings";
+import TableHeader from "@/components/common/orderby";
+import AppPagination from "@/components/common/pager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Trainings() {
-  const [trainings, setTrainings] = useState<Training[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data: trainings } = listTrainings();
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [orderBy, setOrderBy] = useState("name");
 
-  const fetchTrainings = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await listTrainings();
-      setTrainings(data);
-    } catch (err: any) {
-      setError(err.message || "Failed to load trainings");
-    } finally {
-      setLoading(false);
+  const filteredTrainings = React.useMemo(() => {
+    const term = search.trim().toLowerCase();
+    let filtered = trainings;
+
+    // Filter by search term
+    if (term) {
+      filtered = filtered.filter(
+        (training) =>
+          (training.name || "").toLowerCase().includes(term) ||
+          (training.description || "").toLowerCase().includes(term),
+      );
     }
-  };
 
-  useEffect(() => {
-    fetchTrainings();
-  }, []);
+    // Filter by type
+    if (typeFilter && typeFilter !== "all") {
+      filtered = filtered.filter((training) => training.type === typeFilter);
+    }
 
-  const filteredTrainings = trainings.filter(
-    (training) =>
-      training.name.toLowerCase().includes(search.toLowerCase()) ||
-      training.description.toLowerCase().includes(search.toLowerCase()),
-  );
+    // Sort by orderBy
+    filtered.sort((a, b) => {
+      const isDescending = orderBy.startsWith("-");
+      const field = isDescending ? orderBy.slice(1) : orderBy;
+      const multiplier = isDescending ? -1 : 1;
+
+      let aValue: any;
+      let bValue: any;
+
+      switch (field) {
+        case "name":
+          aValue = (a.name || "").toLowerCase();
+          bValue = (b.name || "").toLowerCase();
+          break;
+        case "expiry":
+          aValue = a.expiry || 0;
+          bValue = b.expiry || 0;
+          break;
+        case "created":
+          aValue = new Date(a.timestamp).getTime();
+          bValue = new Date(b.timestamp).getTime();
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return -1 * multiplier;
+      if (aValue > bValue) return 1 * multiplier;
+      return 0;
+    });
+
+    return filtered;
+  }, [search, typeFilter, orderBy, trainings]);
+
+  // Calculate pagination
+  const totalItems = filteredTrainings.length;
+  const _totalPages = Math.ceil(totalItems / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedTrainings = filteredTrainings.slice(startIndex, endIndex);
+
+  // Reset to first page when filters or sorting change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [search, typeFilter, orderBy]);
 
   return (
     <>
@@ -46,75 +95,66 @@ export default function Trainings() {
       <div className="bg-background overflow-hidden rounded-lg shadow">
         <div className="flex flex-col gap-4 px-4 py-3 md:flex-row md:items-center">
           <Input type="text" value={search} onValueChange={setSearch} placeholder="Search trainings..." />
+
+          <div className="flex items-center gap-2">
+            <label className="text-muted-foreground text-sm">Type:</label>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Any Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any Type</SelectItem>
+                <SelectItem value="LMS">LMS</SelectItem>
+                <SelectItem value="TRYBOOKING">TryBooking</SelectItem>
+                <SelectItem value="EXTERNAL">External</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="ml-auto flex items-center gap-2">
-            <Button onClick={() => {}}>New Training</Button>
+            <CreateTrainingDialog>
+              <Button>New Training</Button>
+            </CreateTrainingDialog>
           </div>
         </div>
 
-        <div className="contents [&>*]:h-92 [&>*]:border-y">
-          {loading ? (
-            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
-              <span className="text-sm">Loading Data...</span>
-            </div>
-          ) : error ? (
-            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
-              <span className="text-sm">{error}</span>
-            </div>
-          ) : filteredTrainings.length === 0 ? (
-            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
+        <div className="overflow-x-auto">
+          {totalItems === 0 ? (
+            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2 py-8">
               <span className="text-sm">No trainings found</span>
             </div>
           ) : (
-            <table
-              className={cn(
-                "[&_tbody_tr]:h-16 [&_thead_tr]:h-12",
-                "flex flex-col overflow-x-auto overflow-y-hidden",
-                "[&_tbody]:flex-1 [&_tbody]:overflow-y-auto",
-                "[&_tbody]:mb-[-1px] [&_tr]:border-b",
-                "[&_tr]:flex [&_tr]:items-stretch [&_tr]:gap-8 [&_tr]:px-8",
-                "[&_th,td]:flex [&_th,td]:items-center [&_th,td]:gap-2",
-                "[&_th,td]:w-20 [&_th,td]:nth-1:w-4 [&_th,td]:nth-2:flex-1",
-              )}
-            >
+            <table className="min-w-full text-sm">
               <thead>
-                <tr>
-                  <th>
-                    <div className="text-xs font-bold">Name</div>
+                <tr className="border-b text-left">
+                  <th className="px-3 py-2">
+                    <TableHeader orderBy={orderBy} setOrderBy={setOrderBy} columns={["Name"]} />
                   </th>
-                  <th>
-                    <div className="text-xs font-bold">Type</div>
+                  <th className="px-3 py-2">Description</th>
+                  <th className="px-3 py-2">Type</th>
+                  <th className="px-3 py-2">
+                    <TableHeader orderBy={orderBy} setOrderBy={setOrderBy} columns={["Expiry"]} />
                   </th>
-                  <th>
-                    <div className="text-xs font-bold">Expiry</div>
+                  <th className="px-3 py-2">
+                    <TableHeader orderBy={orderBy} setOrderBy={setOrderBy} columns={["Created"]} />
                   </th>
-                  <th>
-                    <div className="text-xs font-bold">Actions</div>
-                  </th>
+                  <th className="px-3 py-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredTrainings.map((training) => (
-                  <tr key={training.id}>
-                    <td>
-                      <div className="flex flex-col">
-                        <div className="text-sm font-medium">{training.name}</div>
-                        <div className="text-muted-foreground max-w-xs truncate text-xs">{training.description}</div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="text-sm">{training.type}</div>
-                    </td>
-                    <td>
-                      <div className="text-sm">{training.expiry === 0 ? "No expiry" : `${training.expiry} days`}</div>
-                    </td>
-                    <td>
-                      <div className="flex justify-center gap-2">
-                        <Button size="sm" variant="outline">
-                          Edit
-                        </Button>
-                        <Button size="sm" variant="destructive">
-                          Delete
-                        </Button>
+                {paginatedTrainings.map((training) => (
+                  <tr key={training.id} className="border-b last:border-0">
+                    <td className="px-3 py-2 font-medium">{training.name}</td>
+                    <td className="px-3 py-2">{training.description?.trim() ? training.description : "—"}</td>
+                    <td className="px-3 py-2">{training.type}</td>
+                    <td className="px-3 py-2">{training.expiry === 0 ? "No expiry" : `${training.expiry} days`}</td>
+                    <td className="px-3 py-2">{new Date(training.timestamp).toLocaleDateString()}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex gap-2">
+                        <UpdateTrainingDialog training={training}>
+                          <Button size="sm">Edit</Button>
+                        </UpdateTrainingDialog>
+                        <DeleteTrainingButton id={training.id} name={training.name} />
                       </div>
                     </td>
                   </tr>
@@ -123,6 +163,19 @@ export default function Trainings() {
             </table>
           )}
         </div>
+
+        {totalItems > 0 && (
+          <div className="px-4 py-3">
+            <AppPagination
+              totalItems={totalItems}
+              pageSize={pageSize}
+              setPageSize={setPageSize}
+              pageSizeOptions={[5, 10, 20, 50, 100]}
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+            />
+          </div>
+        )}
       </div>
     </>
   );
