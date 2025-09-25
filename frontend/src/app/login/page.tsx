@@ -6,6 +6,7 @@ import SubmitButton from "@/components/common/submit";
 import { Input } from "@/components/ui/input";
 import { useForm } from "@/hooks/form";
 import { sleep } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface LoginResponse {
   refresh: string;
@@ -14,14 +15,32 @@ interface LoginResponse {
 
 export default function LoginPage() {
   const { useField, error, working, reset, submit } = useForm();
+  const router = useRouter();
 
   const [id, setId] = useField("");
 
-  const handleSubmit = submit(async () => {
-    const { access, refresh } = await post<LoginResponse>("/api/auth/login", { uwa_id: id });
-    login(access, refresh);
-    await sleep(60 * 1000); // keep button display working state until redirection
-  });
+const handleSubmit = submit(async () => {
+  // ✅ Dev bypass: allow "12345678" without backend
+  if (id === "12345678") {
+    // save fake but valid-looking tokens
+    localStorage.setItem("access", "dev-access-token");
+    localStorage.setItem("refresh", "dev-refresh-token");
+    localStorage.setItem("uwa_id", id);
+
+    // call login() too, so app behaves normally
+    login("dev-access-token", "dev-refresh-token");
+
+    // go straight to trainings
+    router.push("/dashboard/trainings");
+    return;
+  }
+
+  // normal backend login
+  const { access, refresh } = await post<LoginResponse>("/api/auth/login", { uwa_id: id });
+  login(access, refresh);
+  await sleep(60 * 1000);
+});
+
 
   return (
     <div className="bg-primary relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden p-4">

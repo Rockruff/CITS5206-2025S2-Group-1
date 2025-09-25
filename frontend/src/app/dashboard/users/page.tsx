@@ -4,47 +4,35 @@ import { BubblesIcon, CircleXIcon, EllipsisIcon, LoaderCircleIcon, PlusIcon } fr
 import Link from "next/link";
 import React from "react";
 
-import { CreateUserDialog, DeleteUserDialog, UserAddRemoveGroupDialog } from "./dialogs";
-import { listGroups } from "@/api/groups";
-import { listUsers } from "@/api/users";
+import { listTrainings, createTraining, updateTraining, deleteTraining } from "@/api/trainings";
 import TableHeader from "@/components/common/orderby";
 import AppPagination from "@/components/common/pager";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSet } from "@/hooks/reactive-set";
 import { useQueryParamsState } from "@/hooks/search";
 import { cn } from "@/lib/utils";
 
-export default function Users() {
+export default function Trainings() {
   const selection = useSet<string>();
 
   const [query, setQuery] = useQueryParamsState({
     search: "",
-    group: "",
-    role: "",
+    type: "",
     order_by: "id",
     page: 1,
     page_size: 10,
   });
 
-  const ureq = listUsers(query);
-  const greq = listGroups();
+  const treq = listTrainings(query);
 
   return (
     <>
       <div>
-        <h1 className="text-xl font-bold">User Management</h1>
-        <p className="text-muted-foreground">Manage users and their group assignments.</p>
+        <h1 className="text-xl font-bold">Training Management</h1>
+        <p className="text-muted-foreground">Manage all trainings and their configurations.</p>
       </div>
 
       <div className="bg-background flex flex-1 flex-col overflow-hidden rounded-lg shadow">
@@ -52,48 +40,14 @@ export default function Users() {
           <Input
             type="text"
             value={query.search}
-            onValueChange={(value) => setQuery({ search: value, page: 1 })}
-            placeholder="Search User..."
+            onChange={(e) => setQuery({ search: e.target.value, page: 1 })}
+            placeholder="Search Training..."
           />
 
-          <div className="flex items-center gap-2 max-md:hidden">
-            <label className="text-muted-foreground text-sm">Group:</label>
-            <Select value={query.group} onValueChange={(v) => setQuery({ group: v ?? "", page: 1 })}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Any Group" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={undefined as unknown as string /* workaround */}>Any Group</SelectItem>
-                {greq.data.map((group) => {
-                  return (
-                    <SelectItem key={group.id} value={group.id}>
-                      {group.name}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-2 max-md:hidden">
-            <label className="text-muted-foreground text-sm">Role:</label>
-            <Select value={query.role} onValueChange={(v) => setQuery({ role: v ?? "", page: 1 })}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Any Role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={undefined as unknown as string /* workaround */}>Any Role</SelectItem>
-                <SelectItem value="ADMIN">Admins</SelectItem>
-                <SelectItem value="VIEWER">Viewers</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <CreateUserDialog selection={selection}>
-            <Button size="icon">
-              <PlusIcon />
-            </Button>
-          </CreateUserDialog>
+          {/* Create Training Button */}
+          <Button size="icon" onClick={() => alert("TODO: open CreateTrainingDialog")}>
+            <PlusIcon />
+          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -102,14 +56,11 @@ export default function Users() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuLabel>Selected {selection.length} Users</DropdownMenuLabel>
+              <DropdownMenuLabel>Selected {selection.length} Trainings</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <UserAddRemoveGroupDialog mode="add" selection={selection}>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>Assign to Group</DropdownMenuItem>
-              </UserAddRemoveGroupDialog>
-              <UserAddRemoveGroupDialog mode="remove" selection={selection}>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>Remove From Group</DropdownMenuItem>
-              </UserAddRemoveGroupDialog>
+              <DropdownMenuItem onClick={() => alert("TODO: bulk delete")}>
+                Delete Selected
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => selection.clear()}>Clear Selection</DropdownMenuItem>
             </DropdownMenuContent>
@@ -117,17 +68,17 @@ export default function Users() {
         </div>
 
         <div className="contents [&>*]:flex-1 [&>*]:border-y">
-          {ureq.isLoading ? (
+          {treq.isLoading ? (
             <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
               <LoaderCircleIcon className="animate-spin" />
               <span className="text-sm">Loading Data...</span>
             </div>
-          ) : ureq.error ? (
+          ) : treq.error ? (
             <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
               <CircleXIcon />
-              <span className="text-sm">{ureq.error.error}</span>
+              <span className="text-sm">{treq.error.error}</span>
             </div>
-          ) : ureq.data.items.length === 0 ? (
+          ) : treq.data.length === 0 ? (
             <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
               <BubblesIcon />
               <span className="text-sm">Nothing is Found</span>
@@ -135,22 +86,22 @@ export default function Users() {
           ) : (
             <table
               className={cn(
-                "[&_tbody_tr]:h-16 [&_thead_tr]:h-12", // height config
-                "flex flex-col overflow-x-auto overflow-y-hidden [&_thead,tbody]:min-w-160", // x-scrollable table
-                "[&_tbody]:flex-1 [&_tbody]:overflow-y-auto", // y-scrollable tbody
-                "[&_tbody]:mb-[-1px] [&_tr]:border-b", // borders, with deduplication at bottom
-                "[&_tr]:flex [&_tr]:items-stretch [&_tr]:gap-8 [&_tr]:px-8", // row style
-                "[&_th,td]:flex [&_th,td]:items-center [&_th,td]:gap-2", // cell style
-                "[&_th,td]:w-20 [&_th,td]:nth-1:w-4 [&_th,td]:nth-2:flex-1", // column width
+                "[&_tbody_tr]:h-16 [&_thead_tr]:h-12",
+                "flex flex-col overflow-x-auto overflow-y-hidden [&_thead,tbody]:min-w-160",
+                "[&_tbody]:flex-1 [&_tbody]:overflow-y-auto",
+                "[&_tbody]:mb-[-1px] [&_tr]:border-b",
+                "[&_tr]:flex [&_tr]:items-stretch [&_tr]:gap-8 [&_tr]:px-8",
+                "[&_th,td]:flex [&_th,td]:items-center [&_th,td]:gap-2",
+                "[&_th,td]:w-20 [&_th,td]:nth-1:w-4 [&_th,td]:nth-2:flex-1"
               )}
             >
               <thead>
                 <tr>
                   <th>
                     <Checkbox
-                      checked={selection.has(...ureq.data.items.map((user) => user.id))}
+                      checked={selection.has(...treq.data.map((training) => training.id))}
                       onCheckedChange={(v) =>
-                        (v ? selection.add : selection.remove)(...ureq.data.items.map((user) => user.id))
+                        (v ? selection.add : selection.remove)(...treq.data.map((training) => training.id))
                       }
                     />
                   </th>
@@ -158,14 +109,7 @@ export default function Users() {
                     <TableHeader
                       orderBy={query.order_by}
                       setOrderBy={(v) => setQuery({ order_by: v })}
-                      columns={["Name", "ID"]}
-                    />
-                  </th>
-                  <th>
-                    <TableHeader
-                      orderBy={query.order_by}
-                      setOrderBy={(v) => setQuery({ order_by: v })}
-                      columns={["Role"]}
+                      columns={["Name", "Type", "Expiry"]}
                     />
                   </th>
                   <th>
@@ -174,36 +118,29 @@ export default function Users() {
                 </tr>
               </thead>
               <tbody>
-                {ureq.data.items.map((user) => (
-                  <tr key={user.id}>
+                {treq.data.map((training) => (
+                  <tr key={training.id}>
                     <td>
                       <Checkbox
-                        checked={selection.has(user.id)}
-                        onCheckedChange={(v) => (v ? selection.add(user.id) : selection.remove(user.id))}
+                        checked={selection.has(training.id)}
+                        onCheckedChange={(v) => (v ? selection.add(training.id) : selection.remove(training.id))}
                       />
                     </td>
                     <td>
-                      <div className="flex items-center gap-4">
-                        <img className="size-10 flex-none rounded-full" src={user.avatar} />
-                        <Link href={`/dashboard/users/${user.id}`} className="hoctive:underline overflow-hidden">
-                          <div className="truncate text-sm">{user.name}</div>
-                          <div className="text-xs before:content-['('] after:content-[')']">
-                            {user.id}
-                            {user.aliases.length > 1 && `, +${user.aliases.length - 1} alias`}
-                            {user.aliases.length > 2 && `es`}
-                          </div>
-                        </Link>
-                      </div>
+                      <Link href={`/dashboard/trainings/${training.id}`} className="hover:underline overflow-hidden">
+                        <div className="truncate text-sm">{training.name}</div>
+                        <div className="text-xs">Type: {training.type}</div>
+                        <div className="text-xs">Expiry: {training.expiry} days</div>
+                      </Link>
                     </td>
                     <td>
-                      <div className="text-sm lowercase [&:first-letter]:uppercase">{user.role}</div>
-                    </td>
-                    <td>
-                      <DeleteUserDialog user={user} selection={selection}>
-                        <Button size="sm" variant="destructive">
-                          Delete
-                        </Button>
-                      </DeleteUserDialog>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => deleteTraining(training.id).then(() => alert("Deleted!"))}
+                      >
+                        Delete
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -214,10 +151,10 @@ export default function Users() {
 
         <AppPagination
           className="h-16 px-4"
-          totalItems={ureq.data.total_items}
+          totalItems={treq.data?.length ?? 0}
           pageSize={query.page_size}
           setPageSize={(v) => setQuery({ page_size: v })}
-          pageSizeOptions={[5, 10, 20, 50, 100, 200, 500, 1000]}
+          pageSizeOptions={[5, 10, 20, 50, 100]}
           currentPage={query.page}
           setCurrentPage={(v) => setQuery({ page: v })}
         />
