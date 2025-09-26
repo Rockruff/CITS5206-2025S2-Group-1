@@ -9,8 +9,12 @@ export type APIError = { error: string; data?: any };
 export function login(access: string, refresh: string) {
   localStorage.setItem("access", access);
   localStorage.setItem("refresh", refresh);
+  try {
+    document.cookie = `logged_in=1; Path=/; Max-Age=${7 * 24 * 60 * 60}`; // 7 days
+  } catch {}
 
-  const next = sessionStorage.getItem("next") || "/";
+  let next = sessionStorage.getItem("next") || "/dashboard";
+  if (next === "/") next = "/dashboard";
   sessionStorage.removeItem("next");
   location.assign(next);
 }
@@ -18,6 +22,9 @@ export function login(access: string, refresh: string) {
 export function logout() {
   localStorage.removeItem("access");
   localStorage.removeItem("refresh");
+  try {
+    document.cookie = "logged_in=; Path=/; Max-Age=0";
+  } catch {}
 
   const next = location.pathname;
   sessionStorage.setItem("next", next);
