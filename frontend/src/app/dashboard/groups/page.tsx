@@ -1,19 +1,30 @@
 "use client";
 
-import { PlusIcon } from "lucide-react";
+import { EllipsisIcon, PlusIcon } from "lucide-react";
 import * as React from "react";
 
 import { CreateGroupDialog } from "./create_dialog";
 import DeleteGroupButton from "./delete_button";
+import { GroupTrainingAssignmentDialog } from "./training_assignment_dialog";
 import { UpdateGroupDialog } from "./update_dialog";
 import { listGroups } from "@/api/groups";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { useSet } from "@/hooks/reactive-set";
 import { cn, kwMatch } from "@/lib/utils";
 
 export default function () {
   const { data: groups } = listGroups();
+  const selection = useSet<string>();
 
   const [q, setQ] = React.useState("");
 
@@ -37,6 +48,26 @@ export default function () {
               <PlusIcon />
             </Button>
           </CreateGroupDialog>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="outline">
+                <EllipsisIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Selected {selection.length} Groups</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <GroupTrainingAssignmentDialog mode="add" selection={selection}>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>Assign to Training</DropdownMenuItem>
+              </GroupTrainingAssignmentDialog>
+              <GroupTrainingAssignmentDialog mode="remove" selection={selection}>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>Remove from Training</DropdownMenuItem>
+              </GroupTrainingAssignmentDialog>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => selection.clear()}>Clear Selection</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <table
@@ -54,7 +85,10 @@ export default function () {
           <thead>
             <tr>
               <th>
-                <Checkbox />
+                <Checkbox
+                  checked={selection.has(...filtered.map((g) => g.id))}
+                  onCheckedChange={(v) => (v ? selection.add : selection.remove)(...filtered.map((g) => g.id))}
+                />
               </th>
               <th>
                 <div className="text-xs font-bold">Name</div>
@@ -74,7 +108,10 @@ export default function () {
             {filtered.map((g) => (
               <tr key={g.id}>
                 <td>
-                  <Checkbox />
+                  <Checkbox
+                    checked={selection.has(g.id)}
+                    onCheckedChange={(v) => (v ? selection.add(g.id) : selection.remove(g.id))}
+                  />
                 </td>
                 <td className="truncate text-sm">{g.name}</td>
                 <td className="truncate text-sm">{g.description}</td>

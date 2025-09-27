@@ -59,8 +59,9 @@ export async function listTrainingsWithParams(params?: {
   return api.get<Training[]>(`/api/trainings${query ? `?${query}` : ""}`);
 }
 
-export async function getTraining(id: string): Promise<Training> {
-  return api.get<Training>(`/api/trainings/${id}`);
+export function getTraining(id: string) {
+  let { data, error, isLoading } = swr<Training>(`/api/trainings/${id}`);
+  return { data, error, isLoading };
 }
 
 export async function createTraining(data: TrainingCreateRequest): Promise<Training> {

@@ -3,7 +3,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from core.models import Training
+from core.models import Training, User
 from core.serializers.trainings import (
     TrainingSerializer,
     TrainingCreateSerializer,
@@ -31,6 +31,8 @@ class TrainingViewSet(viewsets.GenericViewSet):
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
+            import pandas as pd
+
             df = pd.read_excel(excel_file)
             updated, created = 0, 0
 
