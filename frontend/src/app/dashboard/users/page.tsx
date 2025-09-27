@@ -1,10 +1,11 @@
 "use client";
 
 import { BubblesIcon, CircleXIcon, EllipsisIcon, LoaderCircleIcon, PlusIcon } from "lucide-react";
-import Link from "next/link";
 import React from "react";
+import { useSWRConfig } from "swr";
 
 import { CreateUserDialog, DeleteUserDialog, UserAddRemoveGroupDialog } from "./dialogs";
+import { EditUserDialog } from "./dialogs";
 import { listGroups } from "@/api/groups";
 import { listUsers } from "@/api/users";
 import TableHeader from "@/components/common/orderby";
@@ -26,6 +27,7 @@ import { useQueryParamsState } from "@/hooks/search";
 import { cn } from "@/lib/utils";
 
 export default function Users() {
+  const { mutate } = useSWRConfig();
   const selection = useSet<string>();
 
   const [query, setQuery] = useQueryParamsState({
@@ -39,6 +41,8 @@ export default function Users() {
 
   const ureq = listUsers(query);
   const greq = listGroups();
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [editingUserId, setEditingUserId] = React.useState<string | null>(null);
 
   return (
     <>
@@ -185,14 +189,22 @@ export default function Users() {
                     <td>
                       <div className="flex items-center gap-4">
                         <img className="size-10 flex-none rounded-full" src={user.avatar} />
-                        <Link href={`/dashboard/users/${user.id}`} className="hoctive:underline overflow-hidden">
+
+                        <button
+                          type="button"
+                          className="hoctive:underline overflow-hidden text-left"
+                          onClick={() => {
+                            setEditingUserId(user.id);
+                            setEditOpen(true);
+                          }}
+                        >
                           <div className="truncate text-sm">{user.name}</div>
                           <div className="text-xs before:content-['('] after:content-[')']">
                             {user.id}
                             {user.aliases.length > 1 && `, +${user.aliases.length - 1} alias`}
                             {user.aliases.length > 2 && `es`}
                           </div>
-                        </Link>
+                        </button>
                       </div>
                     </td>
                     <td>
@@ -222,6 +234,21 @@ export default function Users() {
           setCurrentPage={(v) => setQuery({ page: v })}
         />
       </div>
+
+      <EditUserDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        userId={editingUserId}
+        onSaved={() => {
+          mutate(
+            (key) =>
+              (typeof key === "string" && key.startsWith("/api/users")) ||
+              (Array.isArray(key) && key[0] === "/api/users"),
+            undefined,
+            { revalidate: true },
+          );
+        }}
+      />
     </>
   );
 }
