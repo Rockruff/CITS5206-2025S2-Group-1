@@ -11,7 +11,7 @@ export default function Home() {
                 <span className="text-sm font-bold text-white">ST</span>
               </div>
               <div>
-                <h1 className="text-primary text-xl font-bold">Safe Track</h1>
+                <h1 className="text-primary text-xl font-bold">SafeTracker</h1>
                 <p className="text-xs text-gray-500">Health, Safety & Wellbeing</p>
               </div>
             </div>
@@ -28,10 +28,10 @@ export default function Home() {
                 Contact
               </a>
               <a
-                href="/dashboard"
+                href="/login"
                 className="bg-secondary text-on-secondary hover:bg-secondary/90 rounded-md px-4 py-2 font-medium transition-colors"
               >
-                Dashboard
+                Login
               </a>
             </div>
           </div>
@@ -48,7 +48,7 @@ export default function Home() {
             </div>
 
             {/* Main Title */}
-            <h1 className="mb-6 text-5xl font-bold md:text-6xl">Safe Track</h1>
+            <h1 className="mb-6 text-5xl font-bold md:text-6xl">SafeTracker</h1>
 
             {/* Description */}
             <p className="mx-auto mb-8 max-w-3xl text-xl text-white/90 md:text-2xl">
@@ -59,7 +59,7 @@ export default function Home() {
             {/* CTA Buttons */}
             <div className="flex flex-col justify-center gap-4 sm:flex-row">
               <a
-                href="/dashboard"
+                href="/login"
                 className="bg-secondary text-on-secondary hover:bg-secondary/90 rounded-lg px-8 py-4 text-lg font-semibold transition-colors"
               >
                 Get Started
@@ -168,7 +168,7 @@ export default function Home() {
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="mb-16 text-center">
             <h2 className="mb-4 text-4xl font-bold text-gray-900">Frequently Asked Questions</h2>
-            <p className="text-xl text-gray-600">Everything you need to know about Safe Track</p>
+            <p className="text-xl text-gray-600">Everything you need to know about SafeTracker</p>
           </div>
 
           <div className="space-y-6">
@@ -205,10 +205,10 @@ export default function Home() {
         <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
           <h2 className="mb-4 text-4xl font-bold">Ready to improve your safety training management?</h2>
           <p className="mb-8 text-xl text-white/90">
-            Join organizations that trust Safe Track to manage their workplace safety and compliance requirements.
+            Join organizations that trust SafeTracker to manage their workplace safety and compliance requirements.
           </p>
           <a
-            href="/dashboard"
+            href="/login"
             className="bg-secondary text-on-secondary hover:bg-secondary/90 inline-block rounded-lg px-8 py-4 text-lg font-semibold transition-colors"
           >
             Get Started Today
@@ -225,7 +225,7 @@ export default function Home() {
                 <div className="bg-secondary flex h-8 w-8 items-center justify-center rounded-lg">
                   <span className="text-on-secondary text-sm font-bold">ST</span>
                 </div>
-                <h3 className="text-xl font-bold">Safe Track</h3>
+                <h3 className="text-xl font-bold">SafeTracker</h3>
               </div>
               <p className="mb-4 text-gray-400">
                 Comprehensive training management system for workplace safety and compliance.
@@ -250,7 +250,7 @@ export default function Home() {
               <h4 className="mb-4 text-lg font-semibold">Quick Links</h4>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li>
-                  <a href="/dashboard" className="transition-colors hover:text-white">
+                  <a href="/login" className="transition-colors hover:text-white">
                     Dashboard
                   </a>
                 </li>
