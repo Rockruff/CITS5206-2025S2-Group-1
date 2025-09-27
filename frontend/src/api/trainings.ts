@@ -75,16 +75,3 @@ export async function updateTraining(id: string, data: TrainingUpdateRequest): P
 export async function deleteTraining(id: string): Promise<void> {
   return api.del(`/api/trainings/${id}`);
 }
-
-// Training-Group management functions
-export async function getTrainingGroups(trainingId: string): Promise<any[]> {
-  return api.get<any[]>(`/api/trainings/${trainingId}/groups`);
-}
-
-export async function addGroupsToTraining(trainingId: string, groupIds: string[]): Promise<void> {
-  return api.post(`/api/trainings/${trainingId}/groups`, { groups: groupIds });
-}
-
-export async function removeGroupsFromTraining(trainingId: string, groupIds: string[]): Promise<void> {
-  return api.del(`/api/trainings/${trainingId}/groups`, { groups: groupIds });
-}
