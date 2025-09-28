@@ -39,3 +39,12 @@ class GroupBatchManageTrainingsSerializer(serializers.Serializer):
         required=False,
         default=list,
     )
+
+
+class UserGroupBriefSerializer(serializers.ModelSerializer):
+    """Lightweight group for embedding inside other payloads."""
+
+    class Meta:
+        model = UserGroup
+        fields = ["id", "name", "description", "timestamp"]
+        read_only_fields = ["id", "timestamp"]
