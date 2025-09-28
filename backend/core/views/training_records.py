@@ -4,6 +4,7 @@ from typing import Any, Dict
 from django.utils.dateparse import parse_date
 from rest_framework import serializers, viewsets
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination  # <-- added
 
 from ..models import TrainingRecord, Training, User
 from ..permissions import IsAdmin  # same permission you use elsewhere
@@ -41,13 +42,22 @@ class TrainingRecordPatchSerializer(serializers.Serializer):
         return instance
 
 
+# --------- Pagination (per-view) ---------
+class TrainingRecordPage(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
 # --------- ViewSet ---------
 class TrainingRecordViewSet(viewsets.ModelViewSet):
     """
     CRUD for per-user training completions.
     Query params: user, training, expired=true|false, before=YYYY-MM-DD, after=YYYY-MM-DD, order_by=timestamp|-timestamp
+    Pagination: page, page_size (max 100)
     """
 
+    pagination_class = TrainingRecordPage  # <-- added
     queryset = TrainingRecord.objects.select_related("user", "training").order_by("-timestamp")
     permission_classes = [IsAuthenticated, IsAdmin]
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
