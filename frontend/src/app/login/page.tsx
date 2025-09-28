@@ -1,11 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
 import { login, post } from "@/api/common";
 import Logo from "@/components/app/logo";
 import SubmitButton from "@/components/common/submit";
 import { Input } from "@/components/ui/input";
 import { useForm } from "@/hooks/form";
-import { sleep } from "@/lib/utils";
 
 interface LoginResponse {
   refresh: string;
@@ -14,13 +16,21 @@ interface LoginResponse {
 
 export default function LoginPage() {
   const { useField, error, working, reset, submit } = useForm();
+  const router = useRouter();
+
+  // If already logged in, go straight to dashboard
+  useEffect(() => {
+    try {
+      const access = localStorage.getItem("access");
+      if (access) router.replace("/dashboard");
+    } catch {}
+  }, []);
 
   const [id, setId] = useField("");
 
   const handleSubmit = submit(async () => {
     const { access, refresh } = await post<LoginResponse>("/api/auth/login", { uwa_id: id });
     login(access, refresh);
-    await sleep(60 * 1000); // keep button display working state until redirection
   });
 
   return (
