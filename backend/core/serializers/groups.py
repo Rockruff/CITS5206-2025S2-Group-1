@@ -6,10 +6,14 @@ class UserGroupSerializer(serializers.ModelSerializer):
     users = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), many=True, required=False
     )
+    # NEW: expose trainings attached to this group
+    trainings = serializers.PrimaryKeyRelatedField(
+        queryset=Training.objects.all(), many=True, required=False
+    )
 
     class Meta:
         model = UserGroup
-        fields = ["id", "name", "description", "users", "timestamp"]
+        fields = ["id", "name", "description", "users", "trainings", "timestamp"]
         read_only_fields = ["id", "timestamp"]
 
 

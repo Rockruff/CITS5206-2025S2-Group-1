@@ -11,7 +11,7 @@ from core.serializers.trainings import (
     TrainingCreateSerializer,
     TrainingUpdateSerializer,
 )
-from core.serializers.groups import UserGroupSerializer
+from core.serializers.groups import UserGroupSerializer, UserGroupBriefSerializer
 from core.permissions import IsAdmin
 
 
@@ -47,13 +47,14 @@ class TrainingViewSet(viewsets.GenericViewSet):
         Always returns a flat list (no pagination envelope).
         """
         training = self.get_object()
-        qs = training.groups.all().order_by("name")
+        qs = training.groups.all().order_by("name")  # if reverse differs: training.usergroup_set.all()
 
         s = request.query_params.get("search")
         if s:
             qs = qs.filter(Q(name__icontains=s) | Q(description__icontains=s))
 
-        return Response(UserGroupSerializer(qs, many=True).data)
+        # Use brief serializer to keep payload small and stable
+        return Response(UserGroupBriefSerializer(qs, many=True).data)
 
     # ---------- LMS upload ----------
     # POST /api/trainings/{id}/upload-lms  (multipart/form-data with file=*.xlsx)
