@@ -11,6 +11,7 @@ from rest_framework.response import Response
 
 from core.models import User, UserAlias
 from core.models import UserGroup
+from core.models import Training, TrainingRecord
 from core.serializers.users import (
     UserSerializer,
     UserCreateSerializer,
@@ -121,13 +122,19 @@ class UserViewSet(viewsets.GenericViewSet):
         user = self.get_object()
         if user.id == request.user.id:
             return Response(
-                {"error": "Cannot delete current user"}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "Cannot delete current user"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
         user.delete()
         return Response()
 
     # GET /users/me
-    @action(detail=False, methods=["get"], url_path="me", permission_classes=[IsAuthenticated])
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="me",
+        permission_classes=[IsAuthenticated],
+    )
     def me(self, request):
         return Response(UserSerializer(request.user).data)
 
@@ -237,3 +244,61 @@ class UserViewSet(viewsets.GenericViewSet):
                 created.append(user)
 
         return Response(UserSerializer(created, many=True).data)
+
+        # GET /users/{id}/trainings
+
+    @action(detail=True, methods=["get"], url_path="trainings")
+    def trainings(self, request, *args, **kwargs):
+        """
+        List all trainings visible to this user via their groups, plus completion_status.
+        completion_status ∈ {"not_attempted", "expired", "failed", "passed"}.
+        """
+        user = self.get_object()
+
+        # Trainings linked to any group that the user belongs to
+        user_group_ids = user.groups.values_list("id", flat=True)
+        trainings = (
+            Training.objects.filter(groups__id__in=user_group_ids)
+            .distinct()
+            .prefetch_related("groups")
+            .order_by("name")
+        )
+
+        # Preload user’s records once for O(1) lookup by training id
+        rec_by_tid = {
+            rec.training_id: rec
+            for rec in TrainingRecord.objects.filter(user=user, training__in=trainings)
+        }
+
+        def status_for(training):
+            rec = rec_by_tid.get(training.id)
+            if not rec:
+                return "not_attempted"
+            if rec.is_expired:
+                return "expired"
+            # Prefer explicit flag in details; otherwise pass/fail by required score if present
+            details = rec.details or {}
+            if isinstance(details.get("completed"), bool):
+                return "passed" if details["completed"] else "failed"
+            req = training.config.get("completance_score")
+            score = details.get("score")
+            if isinstance(req, (int, float)) and isinstance(score, (int, float)):
+                return "passed" if score >= req else "failed"
+            # Fallback if we can’t tell
+            return "failed"
+
+        results = []
+        for t in trainings:
+            results.append(
+                {
+                    "id": str(t.id),
+                    "name": t.name,
+                    "description": t.description,
+                    "type": t.type,
+                    "expiry": t.expiry,
+                    "config": t.config,
+                    "completion_status": status_for(t),
+                }
+            )
+
+        return Response(results)

@@ -1,6 +1,6 @@
 # core/views/trainings.py
 from django.http import Http404
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,6 +12,9 @@ from core.serializers.trainings import (
     TrainingUpdateSerializer,
 )
 from core.serializers.groups import UserGroupSerializer, UserGroupBriefSerializer
+from core.serializers.users import (
+    UserSerializer,
+)  # <-- provides completion_status via context
 from core.permissions import IsAdmin
 
 
@@ -19,11 +22,12 @@ class TrainingViewSet(viewsets.GenericViewSet):
     """
     Endpoints:
       - POST   /api/trainings
-      - GET    /api/trainings                 (paginated if DRF pagination enabled)
+      - GET    /api/trainings
       - GET    /api/trainings/{id}
       - PATCH  /api/trainings/{id}
       - DELETE /api/trainings/{id}
-      - GET    /api/trainings/{id}/groups     (flat list; optional ?search=)
+      - GET    /api/trainings/{id}/groups
+      - GET    /api/trainings/{id}/users
       - POST   /api/trainings/{id}/upload-lms (Excel import -> TrainingRecord.details)
     """
 
@@ -47,7 +51,9 @@ class TrainingViewSet(viewsets.GenericViewSet):
         Always returns a flat list (no pagination envelope).
         """
         training = self.get_object()
-        qs = training.groups.all().order_by("name")  # if reverse differs: training.usergroup_set.all()
+        qs = training.groups.all().order_by(
+            "name"
+        )  # if reverse differs: training.usergroup_set.all()
 
         s = request.query_params.get("search")
         if s:
@@ -55,6 +61,48 @@ class TrainingViewSet(viewsets.GenericViewSet):
 
         # Use brief serializer to keep payload small and stable
         return Response(UserGroupBriefSerializer(qs, many=True).data)
+
+    # ---------- users for a training (with completion_status) ----------
+    # GET /api/trainings/{id}/users?search=
+    @action(detail=True, methods=["get"], url_path="users")
+    def users(self, request, pk=None):
+        """
+        Returns users in any group assigned to this training, plus a derived
+        `completion_status` for this specific training:
+          "not_attempted" | "expired" | "failed" | "passed"
+
+        Optional:
+          - ?search= (matches user.name or user.id; case-insensitive)
+        Respects DRF pagination if configured.
+        """
+        try:
+            training = Training.objects.get(id=pk)
+        except Training.DoesNotExist:
+            raise Http404
+
+        # Users who belong to groups linked to this training
+        qs = (
+            User.objects.filter(groups__in=training.groups.all())
+            .distinct()
+            .order_by("name")
+            .prefetch_related(
+                Prefetch(
+                    "records",
+                    queryset=TrainingRecord.objects.filter(training=training),
+                    to_attr="records_for_training",
+                )
+            )
+        )
+
+        s = request.query_params.get("search")
+        if s:
+            qs = qs.filter(Q(name__icontains=s) | Q(id__icontains=s))
+
+        page = self.paginate_queryset(qs)
+        ser = UserSerializer(page or qs, many=True, context={"training": training})
+        if page is not None:
+            return self.get_paginated_response(ser.data)
+        return Response(ser.data)
 
     # ---------- LMS upload ----------
     # POST /api/trainings/{id}/upload-lms  (multipart/form-data with file=*.xlsx)
@@ -126,7 +174,7 @@ class TrainingViewSet(viewsets.GenericViewSet):
             completion_date = row.get(col_last) if col_last else None
 
             # Upsert by (user, training)
-            obj, was_created = TrainingRecord.objects.update_or_create(
+            _, was_created = TrainingRecord.objects.update_or_create(
                 user=user,
                 training=training,
                 defaults={

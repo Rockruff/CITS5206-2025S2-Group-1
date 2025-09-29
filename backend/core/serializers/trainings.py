@@ -1,11 +1,19 @@
+# core/serializers/trainings.py
 from rest_framework import serializers
-from core.models import Training
-from core.serializers.groups import UserGroupBriefSerializer  # NEW: embed brief group
+from core.models import Training, UserGroup
+
+
+class UserGroupBriefSerializer(serializers.ModelSerializer):
+    """Small nested serializer to show groups on a training."""
+
+    class Meta:
+        model = UserGroup
+        fields = ["id", "name", "description", "timestamp"]  # no users list here
 
 
 class TrainingSerializer(serializers.ModelSerializer):
-    # NEW: include groups inline in training payloads
-    groups = UserGroupBriefSerializer(many=True, read_only=True)
+    # NEW: include groups in every training payload
+    groups = serializers.SerializerMethodField()
 
     class Meta:
         model = Training
@@ -17,8 +25,13 @@ class TrainingSerializer(serializers.ModelSerializer):
             "expiry",
             "type",
             "config",
-            "groups",
+            "groups",  # <- added
         ]
+
+    def get_groups(self, obj):
+        # Expect views to prefetch_related("groups") for efficiency
+        groups_qs = getattr(obj, "groups", None).all() if hasattr(obj, "groups") else []
+        return UserGroupBriefSerializer(groups_qs, many=True).data
 
 
 class TrainingCreateSerializer(serializers.ModelSerializer):
@@ -34,7 +47,7 @@ class TrainingCreateSerializer(serializers.ModelSerializer):
     def validate_config(self, value):
         training_type = self.initial_data.get("type")
         if training_type == "LMS":
-            # LMS type requires completance_score
+            # Keep current key used elsewhere: 'completance_score'
             if "completance_score" not in value:
                 raise serializers.ValidationError(
                     "LMS training requires 'completance_score' in config"
@@ -60,7 +73,6 @@ class TrainingUpdateSerializer(serializers.ModelSerializer):
     def validate_config(self, value):
         training_type = self.instance.type if self.instance else self.initial_data.get("type")
         if training_type == "LMS":
-            # LMS type requires completance_score
             if "completance_score" not in value:
                 raise serializers.ValidationError(
                     "LMS training requires 'completance_score' in config"
