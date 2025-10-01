@@ -1,6 +1,16 @@
 "use client";
 
-import { BookOpenText, ChartSpline, CircleGauge, CircleUser, FolderDown, LogOut, Menu, Users } from "lucide-react";
+import {
+  BookOpenText,
+  ChartSpline,
+  CircleGauge,
+  CircleUser,
+  FileText,
+  FolderDown,
+  LogOut,
+  Menu,
+  Users,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useState } from "react";
 
@@ -46,6 +56,9 @@ function SidebarContent() {
             </ButtonText>
             <ButtonText href="/dashboard/trainings" icon={BookOpenText} onClick={closeMobileSidebar}>
               Trainings
+            </ButtonText>
+            <ButtonText href="/dashboard/training-records" icon={FileText} onClick={closeMobileSidebar}>
+              Training Records
             </ButtonText>
           </div>
           <div className="flex flex-col gap-1">
@@ -197,7 +210,7 @@ export default function WithSidebar({ children }: { children: React.ReactNode })
     <div className="max-md:contents md:flex md:[&>main]:flex-1">
       <Sidebar />
 
-      {["/dashboard/users", "/dashboard/groups"].includes(pathname) ? (
+      {["/dashboard/users", "/dashboard/groups", "/dashboard/training-records"].includes(pathname) ? (
         <main
           className={cn(
             "flex flex-col gap-4 p-4 md:gap-8 md:p-8", // expreimental alternative layout

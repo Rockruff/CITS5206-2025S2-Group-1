@@ -2,12 +2,14 @@ from datetime import datetime
 from typing import Any, Dict
 
 from django.utils.dateparse import parse_date
-from rest_framework import serializers, viewsets
+from rest_framework import serializers, viewsets, status
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.pagination import PageNumberPagination  # <-- added
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 
 from ..models import TrainingRecord, Training, User
-from ..permissions import IsAdmin  # same permission you use elsewhere
+from ..permissions import IsAdmin
 
 
 # --------- Serializers (inline) ---------
@@ -29,6 +31,14 @@ class TrainingRecordCreateSerializer(serializers.Serializer):
     training = serializers.PrimaryKeyRelatedField(queryset=Training.objects.all())
     details = serializers.JSONField(required=False, default=dict)
 
+    def validate(self, data):
+        # Check if user is already assigned to this training
+        if TrainingRecord.objects.filter(user=data["user"], training=data["training"]).exists():
+            raise serializers.ValidationError(
+                f"User {data['user'].name} is already assigned to training {data['training'].name}"
+            )
+        return data
+
     def create(self, validated_data: Dict[str, Any]) -> TrainingRecord:
         return TrainingRecord.objects.create(**validated_data)
 
@@ -40,6 +50,43 @@ class TrainingRecordPatchSerializer(serializers.Serializer):
         instance.details = validated_data.get("details", instance.details)
         instance.save(update_fields=["details"])
         return instance
+
+
+class TrainingRecordBatchCreateSerializer(serializers.Serializer):
+    user_ids = serializers.ListField(
+        child=serializers.PrimaryKeyRelatedField(queryset=User.objects.all()), allow_empty=False
+    )
+    training_id = serializers.PrimaryKeyRelatedField(queryset=Training.objects.all())
+    details = serializers.JSONField(required=False, default=dict)
+
+    def validate(self, data):
+        user_ids = data["user_ids"]
+        training = data["training_id"]
+
+        # Check for existing assignments
+        existing_records = TrainingRecord.objects.filter(
+            user__in=user_ids, training=training
+        ).select_related("user")
+
+        if existing_records.exists():
+            existing_users = [record.user.name for record in existing_records]
+            raise serializers.ValidationError(
+                f"Users {', '.join(existing_users)} are already assigned to training {training.name}"
+            )
+
+        return data
+
+    def create(self, validated_data: Dict[str, Any]) -> list[TrainingRecord]:
+        user_ids = validated_data["user_ids"]
+        training = validated_data["training_id"]
+        details = validated_data.get("details", {})
+
+        records = []
+        for user in user_ids:
+            record = TrainingRecord.objects.create(user=user, training=training, details=details)
+            records.append(record)
+
+        return records
 
 
 # --------- Pagination (per-view) ---------
@@ -65,6 +112,8 @@ class TrainingRecordViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "create":
             return TrainingRecordCreateSerializer
+        if self.action == "batch_create":
+            return TrainingRecordBatchCreateSerializer
         if self.action in ("partial_update", "update"):
             return TrainingRecordPatchSerializer
         return TrainingRecordReadSerializer
@@ -105,3 +154,14 @@ class TrainingRecordViewSet(viewsets.ModelViewSet):
             qs = qs.filter(id__in=ids)
 
         return qs
+
+    # POST /training-records/batch
+    @action(detail=False, methods=["post"], url_path="batch")
+    def batch_create(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        records = serializer.save()
+
+        # Return the created records
+        read_serializer = TrainingRecordReadSerializer(records, many=True)
+        return Response(read_serializer.data, status=status.HTTP_200_OK)
