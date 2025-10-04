@@ -1,12 +1,10 @@
 import { CheckedState } from "@radix-ui/react-checkbox";
-import { FileIcon } from "lucide-react";
+import { FileIcon, PlusIcon, XIcon } from "lucide-react";
 import prettyBytes from "pretty-bytes";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useSWRConfig } from "swr";
 
 import { del, patch, post, revalidatePath } from "@/api/common";
-import { swr } from "@/api/common";
 import { User } from "@/api/users";
 import { UserGroupSelectV2 } from "@/components/app/user-group-select";
 import { UserSelect } from "@/components/app/user-select";
@@ -231,26 +229,15 @@ export function UserAddRemoveGroupDialog({
     if (users.length === 0) throw new Error("Please select at least 1 user");
     if (groups.length === 0) throw new Error("Please select at least 1 group");
 
-    if (mode === "remove") {
-      await patch(
-        `/api/groups/batch/users`,
-        groups.map((id: string) => ({
-          group: id,
-          remove: users,
-        })),
-      );
-    } else {
-      await patch(
-        `/api/groups/batch/users`,
-        groups.map((id: string) => ({
-          group: id,
-          add: users,
-        })),
-      );
-    }
+    await patch(
+      `/api/groups/batch/users`,
+      groups.map((id: string) => ({
+        group: id,
+        [mode]: users,
+      })),
+    );
 
     revalidatePath("/api/users");
-    revalidatePath("/api/groups");
     setOpen(false);
     toast.success("Success");
   });
@@ -269,11 +256,11 @@ export function UserAddRemoveGroupDialog({
         </DialogHeader>
 
         <div className="grid gap-2 md:grid-cols-[200px_1fr] md:items-center">
-          <label className="text-muted-foreground text-sm">Users</label>
+          <label className="text-sm">Users</label>
           <UserSelect className="w-64 max-md:w-full" value={users} onValueChange={setUsers} />
         </div>
         <div className="grid gap-2 md:grid-cols-[200px_1fr] md:items-center">
-          <label className="text-muted-foreground text-sm">Target Groups</label>
+          <label className="text-sm">Target Groups</label>
           <UserGroupSelectV2 className="w-64 max-md:w-full" value={groups} onValueChange={setGroups} />
         </div>
 
@@ -294,177 +281,192 @@ export function UserAddRemoveGroupDialog({
   );
 }
 
-//Adding new dialog for user details:
-export function EditUserDialog({
-  open,
-  onOpenChange,
-  userId,
-  onSaved,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  userId: string | null;
-  onSaved?: () => void;
-}) {
-  // Only call swr if we have a valid userId and dialog is open
-  if (!open || !userId) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>{/* ... header etc ... */}</DialogContent>
-      </Dialog>
-    );
-  }
+function AddAliasDialog({ children, user }: { children: React.ReactNode; user: User }) {
+  const [open, setOpen] = useState(false);
+  const { useField, working, error, submit } = useForm();
 
-  const { data: user, isLoading, error } = swr<User>(`/api/users/${userId}`);
+  const [alias, setAlias] = useField<string>("");
+  const handler = submit(async () => {
+    await post(`/api/users/${user.id}/aliases`, { id: alias });
+    revalidatePath("/api/users");
+    revalidatePath(`/api/users/${user.id}`);
+  });
 
-  const { mutate } = useSWRConfig();
-
-  // always fetch the freshest user when the dialog opens
-  useEffect(() => {
-    if (open && userId) {
-      mutate(`/api/users/${userId}`); // revalidate detail endpoint
-    }
-  }, [open, userId, mutate]);
-
-  // Re-initialize the tiny form hook whenever the user changes by keying the form subtree
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit User</DialogTitle>
-          <DialogDescription>Update role and groups. ID and Name are read-only.</DialogDescription>
+          <DialogTitle>Add Alias</DialogTitle>
+          <DialogDescription>Create a new alias to the user</DialogDescription>
         </DialogHeader>
 
-        {isLoading && <div className="text-muted-foreground py-6 text-sm">Loading…</div>}
-        {error && <div className="text-destructive py-2 text-sm">Failed to load user.</div>}
+        <div className="grid gap-2">
+          <label className="text-sm">Alias UWA ID</label>
+          <Input value={alias} onValueChange={setAlias} />
+        </div>
 
-        {user && (
-          <EditUserForm
-            key={user.id} // only key by id (don’t key by groups)
-            user={user}
-            onClose={() => onOpenChange(false)}
-            onSaved={onSaved}
-          />
-        )}
+        <div className="text-destructive text-sm empty:hidden">{error}</div>
+
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button disabled={working} variant="ghost">
+              Cancel
+            </Button>
+          </DialogClose>
+          <SubmitButton disabled={working} onClick={handler}>
+            Add
+          </SubmitButton>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function EditUserForm({ user, onClose, onSaved }: { user: User; onClose: () => void; onSaved?: () => void }) {
-  const { useField, error, working, submit } = useForm();
-  const { mutate } = useSWRConfig();
+function RemoveAliasDialog({ children, user, alias }: { children: React.ReactNode; user: User; alias: string }) {
+  const [open, setOpen] = useState(false);
 
-  // local fields
-  const [role, setRole] = useField<User["role"]>(user.role);
-  const [groups, setGroups] = useField<string[]>(user.groups ?? []);
+  const { working, error, submit } = useForm();
 
-  //resync local form when SWR data changes
-  useEffect(() => {
-    setRole(user.role);
-    setGroups(user.groups ?? []);
-  }, [user.role, JSON.stringify(user.groups)]);
-
-  const onSubmit = submit(async () => {
-    const prevGroups = user.groups ?? [];
-    const nextGroups = groups ?? [];
-
-    //diff groups
-    const toAdd = nextGroups.filter((id) => !prevGroups.includes(id));
-    const toRemove = prevGroups.filter((id) => !nextGroups.includes(id));
-
-    // 1) Patch ROLE only (if changed)
-    let updatedUser: User = user;
-    if (role !== user.role) {
-      updatedUser = await patch(`/api/users/${user.id}`, { role });
-    }
-
-    // 2) Sync GROUP MEMBERSHIP using the same batch endpoint as the users page
-    const ops: Array<{ group: string; add?: string[]; remove?: string[] }> = [];
-    if (toAdd.length) ops.push(...toAdd.map((gid) => ({ group: gid, add: [user.id] })));
-    if (toRemove.length) ops.push(...toRemove.map((gid) => ({ group: gid, remove: [user.id] })));
-
-    if (ops.length) {
-      await patch(`/api/groups/batch/users`, ops);
-    }
-
-    // 3) Update caches optimistically so the dialog + list reflect immediately
-    const merged = { ...updatedUser, role, groups: nextGroups };
-
-    // 3) Update caches so UI reflects immediately (and wait for them)
-    await mutate(`/api/users/${user.id}`, merged, false);
-
-    await mutate(
-      (key: unknown) =>
-        (typeof key === "string" && key.startsWith("/api/users")) || (Array.isArray(key) && key[0] === "/api/users"),
-      (prev: any) => {
-        if (!prev?.items) return prev;
-        return {
-          ...prev,
-          items: prev.items.map((it: User) => (it.id === merged.id ? { ...it, ...merged } : it)),
-        };
-      },
-      false,
-    );
-
-    // 4) Revalidate the detail endpoint once (gets the canonical server version)
-    await mutate(`/api/users/${user.id}`);
-    toast.success("User updated");
-    onSaved?.();
-    onClose();
+  const handler = submit(async () => {
+    await del(`/api/users/${user.id}/aliases`, { id: alias });
+    revalidatePath("/api/users");
+    revalidatePath(`/api/users/${user.id}`);
   });
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* ID */}
-      <div className="grid gap-2">
-        <label className="text-sm">ID</label>
-        <Input value={user.id} disabled />
-      </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remove Alias</DialogTitle>
+          <DialogDescription>Are you sure you want to remove alias {alias} from the user?</DialogDescription>
+        </DialogHeader>
 
-      {/* Name */}
-      <div className="grid gap-2">
-        <label className="text-sm">Name</label>
-        <Input value={user.name} disabled />
-      </div>
+        <div className="text-destructive text-sm empty:hidden">{error}</div>
 
-      {/* Role (dropdown) */}
-      <div className="grid gap-2">
-        <label className="text-sm">Role</label>
-        <Select
-          key={`${user.id}-${user.role}`} //forces reset when role changes
-          value={role}
-          onValueChange={(v) => setRole(v as User["role"])}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ADMIN">Admin</SelectItem>
-            <SelectItem value="VIEWER">Viewer</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button disabled={working} variant="ghost">
+              Cancel
+            </Button>
+          </DialogClose>
+          <SubmitButton variant="destructive" disabled={working} onClick={handler}>
+            Remove
+          </SubmitButton>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-      {/* Groups */}
-      <div className="grid gap-2">
-        <label className="text-sm">Groups</label>
-        <UserGroupSelectV2
-          value={groups} //controlled value (array of group IDs)
-          onValueChange={setGroups}
-        />
-      </div>
+export function EditUserDialog({ children, user }: { children: React.ReactNode; user: User }) {
+  const [open, setOpen] = useState(false);
 
-      <div className="text-destructive text-sm empty:hidden">{error}</div>
+  const { useField, working, error, submit } = useForm();
 
-      <DialogFooter>
-        <Button variant="ghost" onClick={onClose} disabled={working}>
-          Cancel
-        </Button>
-        <Button onClick={onSubmit} disabled={working}>
-          Save
-        </Button>
-      </DialogFooter>
-    </div>
+  const [id, setId] = useField(user.id);
+  const [name, setName] = useField(user.name);
+  const [role, setRole] = useField<string>(user.role);
+  const [groups, setGroups] = useField<string[]>(user.groups);
+
+  const handler = submit(async () => {
+    await patch(`/api/users/${user.id}`, {
+      id,
+      name,
+      role,
+    });
+
+    const prevGroups = user.groups;
+    const nextGroups = groups;
+    const toAdd = nextGroups.filter((id) => !prevGroups.includes(id));
+    const toRemove = prevGroups.filter((id) => !nextGroups.includes(id));
+    const ops: Array<{ group: string; add?: string[]; remove?: string[] }> = [];
+    if (toAdd.length) ops.push(...toAdd.map((gid) => ({ group: gid, add: [user.id] })));
+    if (toRemove.length) ops.push(...toRemove.map((gid) => ({ group: gid, remove: [user.id] })));
+    if (ops.length) await patch(`/api/groups/batch/users`, ops);
+
+    revalidatePath("/api/users");
+    revalidatePath(`/api/users/${user.id}`);
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit User</DialogTitle>
+          <DialogDescription>Update user details.</DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-2">
+          <label className="text-sm">ID</label>
+          <Select disabled={true} value={id} onValueChange={setId}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {user.aliases.map((alias) => (
+                <SelectItem key={alias} value={alias}>
+                  {alias}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="text-muted-foreground text-sm">Currently, Primary ID does not support update.</div>
+        </div>
+        <div className="grid gap-2">
+          <label className="text-sm">Aliases</label>
+          <div className="flex flex-wrap items-center gap-2">
+            {user.aliases.map((alias) => (
+              <RemoveAliasDialog key={alias} user={user} alias={alias}>
+                <Button>
+                  <span>{alias}</span>
+                  <XIcon />
+                </Button>
+              </RemoveAliasDialog>
+            ))}
+            <AddAliasDialog user={user}>
+              <Button size="icon">
+                <PlusIcon />
+              </Button>
+            </AddAliasDialog>
+          </div>
+        </div>
+        <div className="grid gap-2">
+          <label className="text-sm">Name</label>
+          <Input value={name} onValueChange={setName} />
+        </div>
+        <div className="grid gap-2">
+          <label className="text-sm">Role</label>
+          <Select value={role} onValueChange={setRole}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ADMIN">Admin</SelectItem>
+              <SelectItem value="VIEWER">Viewer</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <label className="text-sm">Groups</label>
+          <UserGroupSelectV2 value={groups} onValueChange={setGroups} />
+        </div>
+
+        <div className="text-destructive text-sm empty:hidden">{error}</div>
+
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button disabled={working} variant="ghost">
+              Cancel
+            </Button>
+          </DialogClose>
+          <SubmitButton disabled={working} onClick={handler}>
+            Save
+          </SubmitButton>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
