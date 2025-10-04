@@ -21,7 +21,9 @@
   "scripts": {
     "prepare": "husky",
     "postinstall": "node backend/venv-tool.js --init",
-    "py": "node backend/venv-tool.js --python"
+    "py": "node backend/venv-tool.js --python",
+    "frontend": "npm --workspace frontend run dev",
+    "backend": "npm run py manage.py runserver"
   },
   "lint-staged": {
     "*.{css,scss,sass,less,html}": [
