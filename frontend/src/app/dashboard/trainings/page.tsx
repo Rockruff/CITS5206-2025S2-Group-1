@@ -2,6 +2,7 @@
 
 import { EditIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import cn from "mxcn";
+import Link from "next/link";
 import * as React from "react";
 import { useState } from "react";
 
@@ -97,7 +98,6 @@ export default function Trainings() {
                 />
               </th>
               <th>
-                {" "}
                 <TableHeader
                   orderBy={query.order_by}
                   setOrderBy={(order_by) => setQuery({ order_by })}
@@ -105,7 +105,6 @@ export default function Trainings() {
                 />
               </th>
               <th>
-                {" "}
                 <TableHeader
                   orderBy={query.order_by}
                   setOrderBy={(order_by) => setQuery({ order_by })}
@@ -132,7 +131,9 @@ export default function Trainings() {
           <tbody>
             {paginatedTrainings.map((training) => (
               <tr key={training.id} className="border-b last:border-0">
-                <td>{training.name}</td>
+                <td>
+                  <Link href={`/dashboard/trainings/${training.id}`}>{training.name}</Link>
+                </td>
                 <td>{training.description?.trim() ? training.description : "—"}</td>
                 <td>{training.type}</td>
                 <td>{training.expiry === 0 ? "Never" : `${training.expiry} Days`}</td>

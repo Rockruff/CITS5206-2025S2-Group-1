@@ -10,8 +10,9 @@ import {
   DeleteTrainingRecordDialog,
   EditTrainingRecordDialog,
 } from "./dialogs";
-import { TrainingRecord, listTrainingRecords } from "@/api/training-records";
+import { listTrainingRecords } from "@/api/training-records";
 import { TrainingRenderer, TrainingSingleSelect } from "@/components/app/training-select";
+import { StatusBadge } from "@/components/app/training-status-badage";
 import { UserRenderer } from "@/components/app/user-select";
 import DateRangePicker from "@/components/common/date-range-picker";
 import TableHeader from "@/components/common/orderby";
@@ -31,20 +32,6 @@ import { Input } from "@/components/ui/input";
 import { useSet } from "@/hooks/reactive-set";
 import { useQueryParamsState } from "@/hooks/search";
 import { cn, formatDate } from "@/lib/utils";
-
-function StatusBadge({ status }: { status: TrainingRecord["status"] }) {
-  return (
-    <div
-      className={cn("rounded-full px-2 py-1 text-[.66rem]", {
-        "bg-red-100 text-red-800": status === "FAILED",
-        "bg-yellow-100 text-yellow-800": status === "EXPIRED",
-        "bg-green-100 text-green-800": status === "COMPLETED",
-      })}
-    >
-      {status}
-    </div>
-  );
-}
 
 export default function TrainingRecords() {
   const { mutate } = useSWRConfig();

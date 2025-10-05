@@ -1,6 +1,7 @@
 "use client";
 
 import { EditIcon, EllipsisIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import Link from "next/link";
 import React from "react";
 
 import { CreateUserDialog, DeleteUserDialog, UserAddRemoveGroupDialog } from "./dialogs";
@@ -69,7 +70,7 @@ export default function Users() {
 
           <div className="flex items-center gap-2 max-md:hidden">
             <label className="text-muted-foreground text-sm">Role:</label>
-            <ClearableSelect value={query.role} onValueChange={(v) => setQuery({ role: v ?? "", page: 1 })}>
+            <ClearableSelect value={query.role} onValueChange={(v) => setQuery({ role: v, page: 1 })}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="Any Role" />
               </SelectTrigger>
@@ -158,7 +159,7 @@ export default function Users() {
                   />
                 </td>
                 <td>
-                  <div className="flex items-center gap-4">
+                  <Link className="flex items-center gap-4" href={`/dashboard/users/${user.id}`}>
                     <img className="size-10 flex-none rounded-full" src={user.avatar} />
                     <div className="overflow-hidden text-left">
                       <div className="truncate text-sm">{user.name}</div>
@@ -168,7 +169,7 @@ export default function Users() {
                         {user.aliases.length > 2 && `es`}
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 </td>
                 <td>
                   <div className="lowercase [&:first-letter]:uppercase">{user.role}</div>

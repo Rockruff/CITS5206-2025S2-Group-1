@@ -126,32 +126,12 @@ class UserViewSet(viewsets.GenericViewSet):
     def me(self, request):
         return Response(UserSerializer(request.user).data)
 
-    @action(detail=True, methods=["put"], url_path="groups")
-    def set_groups(self, request, *args, **kwargs):
-        """
-        Replace this user's group memberships with the given list of group UUIDs.
-        Body: { "groups": ["<uuid>", ...] }
-        """
-        user = self.get_object()
-        group_ids = request.data.get("groups", [])
-        if not isinstance(group_ids, list):
-            return Response({"error": "groups must be a list of UUIDs"}, status=400)
-
-        # Validate IDs exist; you can soften this if you prefer
-        groups = list(UserGroup.objects.filter(id__in=group_ids))
-        if len(groups) != len(set(group_ids)):
-            return Response({"error": "one or more groups not found"}, status=400)
-
-        # This works because the M2M is defined on UserGroup with related_name="groups"
-        user.groups.set(groups)  # replace all memberships at once
-        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
-
     # POST /users/{id}/aliases
     # DELETE /users/{id}/aliases
     # Since I want to use the same endpoint for both adding and removing aliases,
     # I will check the request method to determine the action.
     @action(detail=True, methods=["post", "delete"], url_path="aliases")
-    def add_alias(self, request, *args, **kwargs):
+    def manage_alias(self, request, *args, **kwargs):
         user = self.get_object()
         serializer_class = (
             UserAliasCreateSerializer if request.method == "POST" else UserAliasDeleteSerializer
@@ -253,7 +233,7 @@ class UserViewSet(viewsets.GenericViewSet):
         results = []
 
         for training in trainings:
-            record = TrainingRecord.objects.filter(user=user, training=training)
+            record = TrainingRecord.objects.filter(user=user, training=training).first()
             if not record:
                 results.append({"training": training.id, "status": "PENDING"})
             else:

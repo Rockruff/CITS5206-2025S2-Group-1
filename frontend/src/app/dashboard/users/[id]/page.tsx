@@ -1,117 +1,73 @@
 "use client";
 
-import { PlusIcon, XIcon } from "lucide-react";
+import cn from "mxcn";
 import { use } from "react";
-import { useEffect } from "react";
 
+import { swr } from "@/api/common";
 import { getUser } from "@/api/users";
-import { UserGroupSelectV2 } from "@/components/app/user-group-select";
-import { ButtonIconOnly } from "@/components/common/button";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useForm } from "@/hooks/form";
+import { TrainingRenderer } from "@/components/app/training-select";
+import { StatusBadge } from "@/components/app/training-status-badage";
+import TableErrorDisplay from "@/components/common/table-error-display";
 
-function UserProfileSection({ id: uid }: { id: string }) {
-  const { data: user } = getUser(uid);
-
-  const { useField, error, working, reset, submit } = useForm();
-
-  const [id, setId] = useField("");
-  const [name, setName] = useField("");
-  const [role, setRole] = useField("");
-  const [groups, setGroups] = useField<string[]>([]);
-
-  useEffect(() => {
-    if (!user) return;
-    setId(user.id);
-    setName(user.name);
-    setRole(user.role);
-    setGroups(user.groups);
-  }, [user]);
-
-  if (!user) return null;
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>User Configuration</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid gap-2 md:grid-cols-[200px_1fr] md:items-center">
-          <label className="text-muted-foreground text-sm font-medium">ID</label>
-          <Input value={id} onValueChange={setId} />
-        </div>
-
-        <div className="grid gap-2 md:grid-cols-[200px_1fr] md:items-center">
-          <label className="text-muted-foreground text-sm font-medium">Name</label>
-          <Input value={name} onValueChange={setName} />
-        </div>
-
-        <div className="grid gap-2 md:grid-cols-[200px_1fr] md:items-center">
-          <label className="text-muted-foreground text-sm font-medium">Role</label>
-          <Select value={role} onValueChange={setRole}>
-            <SelectTrigger className="w-full md:w-[250px]">
-              <SelectValue placeholder="Select role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ADMIN">Admin</SelectItem>
-              <SelectItem value="VIEWER">Viewer</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        {/* UWA IDs */}
-        <div className="grid gap-2 md:grid-cols-[200px_1fr] md:items-center">
-          <label className="text-muted-foreground text-sm font-medium">UWA IDs</label>
-          <div className="flex flex-wrap items-center gap-2">
-            {user.aliases.map((id, index) => (
-              <div
-                key={index}
-                className="bg-primary text-primary-foreground flex items-center gap-2 rounded-full px-3 text-xs/6"
-              >
-                <span>{id}</span>
-                <ButtonIconOnly
-                  className="hover:bg-secondary-foreground/20 rounded-full p-1"
-                  icon={XIcon}
-                  onClick={() => removeUwaId(user.id, id)}
-                />
-              </div>
-            ))}
-            <ButtonIconOnly icon={PlusIcon} onClick={() => addUwaIdPopup(user.id)}></ButtonIconOnly>
-          </div>
-        </div>
-        {/* Groups */}
-        <div className="grid gap-2 md:grid-cols-[200px_1fr] md:items-center">
-          <label className="text-muted-foreground text-sm font-medium">Groups</label>
-          <UserGroupSelectV2 value={groups} onValueChange={setGroups} />
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Button className="ml-auto">Save</Button>
-      </CardFooter>
-    </Card>
-  );
-}
-
-export default function Users({ params }: { params: Promise<{ id: string }> }) {
+export default function TrainingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
 
+  let { data, error, isLoading } = swr<
+    {
+      training: string;
+      status: string;
+    }[]
+  >(`/api/users/${id}/trainings`);
+
+  const { data: user } = getUser(id);
+
   return (
-    <div className="space-y-6">
+    <>
       <div>
-        <h1 className="text-2xl font-bold">User Profile</h1>
-        <p className="text-muted-foreground">View & edit user details</p>
+        <h1 className="text-xl font-bold">User Detail</h1>
+        <p className="text-muted-foreground">
+          Viewing assigned trainings and their completion status for user{" "}
+          {user && (
+            <span className="font-bold">
+              {user.name} ({user.id})
+            </span>
+          )}
+        </p>
       </div>
 
-      <UserProfileSection id={id} />
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Training History</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6"></CardContent>
-      </Card>
-    </div>
+      <div className="bg-background flex flex-1 flex-col overflow-hidden rounded-lg shadow">
+        <table
+          className={cn(
+            "[&_tbody_tr]:h-16 [&_thead_tr]:h-12", // height config
+            "flex flex-1 flex-col overflow-x-auto overflow-y-hidden", // x-scrollable table
+            "[&_tbody]:flex-1 [&_tbody]:overflow-y-auto", // y-scrollable tbody
+            "border-y [&_tbody]:mb-[-1px] [&_tr]:border-b", // borders, with deduplication at bottom
+            "[&_tr]:flex [&_tr]:items-stretch [&_tr]:gap-8 [&_tr]:px-8", // row style
+            "[&_td]:text-sm [&_th]:text-xs [&_th]:font-bold [&_th,td]:flex [&_th,td]:items-center [&_th,td]:gap-2", // cell style
+            "[&_th,td]:w-20 [&_th,td]:nth-1:flex-1 [&_thead,tbody]:min-w-160", // column width
+          )}
+        >
+          <thead>
+            <tr>
+              <th>Training</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data?.map(({ training, status }) => (
+              <tr key={training}>
+                <td>
+                  <TrainingRenderer value={training} />
+                </td>
+                <td>
+                  <StatusBadge status={status} />
+                </td>
+              </tr>
+            ))}
+            <TableErrorDisplay colSpan={4} isLoading={isLoading} error={error} />
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
