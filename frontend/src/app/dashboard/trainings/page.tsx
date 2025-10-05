@@ -30,7 +30,7 @@ export default function Trainings() {
 
   // Calculate pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(500);
   const totalItems = filteredTrainings.length;
   const _totalPages = Math.ceil(totalItems / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
@@ -161,7 +161,7 @@ export default function Trainings() {
           totalItems={totalItems}
           pageSize={pageSize}
           setPageSize={setPageSize}
-          pageSizeOptions={[5, 10, 20, 50, 100]}
+          pageSizeOptions={[5, 10, 20, 50, 100, 500, 1000]}
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
         />
