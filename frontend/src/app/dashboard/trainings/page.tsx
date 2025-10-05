@@ -1,5 +1,7 @@
 "use client";
 
+import { EditIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import cn from "mxcn";
 import * as React from "react";
 import { useState } from "react";
 
@@ -7,83 +9,32 @@ import { CreateTrainingDialog } from "./create_dialog";
 import DeleteTrainingButton from "./delete_button";
 import { UpdateTrainingDialog } from "./update_dialog";
 import { listTrainings } from "@/api/trainings";
+import { ClearableSelect, SelectClear } from "@/components/common/clearable-select";
 import TableHeader from "@/components/common/orderby";
 import AppPagination from "@/components/common/pager";
+import TableErrorDisplay from "@/components/common/table-error-display";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useQueryParamsState } from "@/hooks/search";
 
 export default function Trainings() {
-  const { data: trainings } = listTrainings();
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [orderBy, setOrderBy] = useState("name");
+  const [query, setQuery] = useQueryParamsState({
+    search: "",
+    type: "",
+    order_by: "name",
+  });
 
-  const filteredTrainings = React.useMemo(() => {
-    const term = search.trim().toLowerCase();
-    let filtered = trainings;
-
-    // Filter by search term
-    if (term) {
-      filtered = filtered.filter(
-        (training) =>
-          (training.name || "").toLowerCase().includes(term) ||
-          (training.description || "").toLowerCase().includes(term),
-      );
-    }
-
-    // Filter by type
-    if (typeFilter && typeFilter !== "all") {
-      filtered = filtered.filter((training) => training.type === typeFilter);
-    }
-
-    // Sort by orderBy
-    filtered.sort((a, b) => {
-      const isDescending = orderBy.startsWith("-");
-      const field = isDescending ? orderBy.slice(1) : orderBy;
-      const multiplier = isDescending ? -1 : 1;
-
-      let aValue: any;
-      let bValue: any;
-
-      switch (field) {
-        case "name":
-          aValue = (a.name || "").toLowerCase();
-          bValue = (b.name || "").toLowerCase();
-          break;
-        case "expiry":
-          aValue = a.expiry || 0;
-          bValue = b.expiry || 0;
-          break;
-        case "created":
-          aValue = new Date(a.timestamp).getTime();
-          bValue = new Date(b.timestamp).getTime();
-          break;
-        default:
-          return 0;
-      }
-
-      if (aValue < bValue) return -1 * multiplier;
-      if (aValue > bValue) return 1 * multiplier;
-      return 0;
-    });
-
-    return filtered;
-  }, [search, typeFilter, orderBy, trainings]);
+  const { data: filteredTrainings, isLoading, error } = listTrainings(query);
 
   // Calculate pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const totalItems = filteredTrainings.length;
   const _totalPages = Math.ceil(totalItems / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const paginatedTrainings = filteredTrainings.slice(startIndex, endIndex);
-
-  // Reset to first page when filters or sorting change
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [search, typeFilter, orderBy]);
 
   return (
     <>
@@ -92,90 +43,127 @@ export default function Trainings() {
         <p className="text-muted-foreground">Manage training courses and their configurations</p>
       </div>
 
-      <div className="bg-background overflow-hidden rounded-lg shadow">
-        <div className="flex flex-col gap-4 px-4 py-3 md:flex-row md:items-center">
-          <Input type="text" value={search} onValueChange={setSearch} placeholder="Search trainings..." />
+      <div className="bg-background flex flex-1 flex-col overflow-hidden rounded-lg shadow">
+        <div className="flex h-16 items-center gap-4 px-4">
+          <Input
+            type="text"
+            value={query.search}
+            onValueChange={(search) => setQuery({ search })}
+            placeholder="Search by Name or Description......"
+          />
 
           <div className="flex items-center gap-2">
             <label className="text-muted-foreground text-sm">Type:</label>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger>
+            <ClearableSelect value={query.type} onValueChange={(type) => setQuery({ type })}>
+              <SelectTrigger className="w-36">
                 <SelectValue placeholder="Any Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Any Type</SelectItem>
+                <SelectClear>Any Type</SelectClear>
                 <SelectItem value="LMS">LMS</SelectItem>
                 <SelectItem value="TRYBOOKING">TryBooking</SelectItem>
                 <SelectItem value="EXTERNAL">External</SelectItem>
               </SelectContent>
-            </Select>
+            </ClearableSelect>
           </div>
 
           <div className="ml-auto flex items-center gap-2">
             <CreateTrainingDialog>
-              <Button>New Training</Button>
+              <Button size="icon">
+                <PlusIcon />
+              </Button>
             </CreateTrainingDialog>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          {totalItems === 0 ? (
-            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2 py-8">
-              <span className="text-sm">No trainings found</span>
-            </div>
-          ) : (
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="px-3 py-2">
-                    <TableHeader orderBy={orderBy} setOrderBy={setOrderBy} columns={["Name"]} />
-                  </th>
-                  <th className="px-3 py-2">Description</th>
-                  <th className="px-3 py-2">Type</th>
-                  <th className="px-3 py-2">
-                    <TableHeader orderBy={orderBy} setOrderBy={setOrderBy} columns={["Expiry"]} />
-                  </th>
-                  <th className="px-3 py-2">
-                    <TableHeader orderBy={orderBy} setOrderBy={setOrderBy} columns={["Created"]} />
-                  </th>
-                  <th className="px-3 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedTrainings.map((training) => (
-                  <tr key={training.id} className="border-b last:border-0">
-                    <td className="px-3 py-2 font-medium">{training.name}</td>
-                    <td className="px-3 py-2">{training.description?.trim() ? training.description : "—"}</td>
-                    <td className="px-3 py-2">{training.type}</td>
-                    <td className="px-3 py-2">{training.expiry === 0 ? "No expiry" : `${training.expiry} days`}</td>
-                    <td className="px-3 py-2">{new Date(training.timestamp).toLocaleDateString()}</td>
-                    <td className="px-3 py-2">
-                      <div className="flex gap-2">
-                        <UpdateTrainingDialog training={training}>
-                          <Button size="sm">Edit</Button>
-                        </UpdateTrainingDialog>
-                        <DeleteTrainingButton id={training.id} name={training.name} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <table
+          className={cn(
+            "[&_tbody_tr]:h-16 [&_thead_tr]:h-12", // height config
+            "flex flex-1 flex-col overflow-x-auto overflow-y-hidden", // x-scrollable table
+            "[&_tbody]:flex-1 [&_tbody]:overflow-y-auto", // y-scrollable tbody
+            "border-y [&_tbody]:mb-[-1px] [&_tr]:border-b", // borders, with deduplication at bottom
+            "[&_tr]:flex [&_tr]:items-stretch [&_tr]:gap-8 [&_tr]:px-8", // row style
+            "[&_td]:text-sm [&_th]:text-xs [&_th]:font-bold [&_th,td]:flex [&_th,td]:items-center [&_th,td]:gap-2", // cell style
+            "[&_th,td]:w-20 [&_th,td]:last:w-20 [&_th,td]:nth-1:w-48 [&_th,td]:nth-2:flex-1 [&_th,td]:nth-3:w-24 [&_thead,tbody]:min-w-200", // column width
           )}
-        </div>
+        >
+          <thead>
+            <tr className="border-b text-left">
+              <th>
+                <TableHeader
+                  orderBy={query.order_by}
+                  setOrderBy={(order_by) => setQuery({ order_by })}
+                  columns={["Name"]}
+                />
+              </th>
+              <th>
+                {" "}
+                <TableHeader
+                  orderBy={query.order_by}
+                  setOrderBy={(order_by) => setQuery({ order_by })}
+                  columns={["Description"]}
+                />
+              </th>
+              <th>
+                {" "}
+                <TableHeader
+                  orderBy={query.order_by}
+                  setOrderBy={(order_by) => setQuery({ order_by })}
+                  columns={["Type"]}
+                />
+              </th>
+              <th>
+                <TableHeader
+                  orderBy={query.order_by}
+                  setOrderBy={(order_by) => setQuery({ order_by })}
+                  columns={["Expiry"]}
+                />
+              </th>
+              <th>
+                <TableHeader
+                  orderBy={query.order_by}
+                  setOrderBy={(order_by) => setQuery({ order_by })}
+                  columns={["Created"]}
+                />
+              </th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedTrainings.map((training) => (
+              <tr key={training.id} className="border-b last:border-0">
+                <td>{training.name}</td>
+                <td>{training.description?.trim() ? training.description : "—"}</td>
+                <td>{training.type}</td>
+                <td>{training.expiry === 0 ? "Never" : `${training.expiry} Days`}</td>
+                <td>{new Date(training.timestamp).toLocaleDateString()}</td>
+                <td>
+                  <UpdateTrainingDialog training={training}>
+                    <Button size="icon">
+                      <EditIcon />
+                    </Button>
+                  </UpdateTrainingDialog>
+                  <DeleteTrainingButton id={training.id} name={training.name}>
+                    <Button size="icon" variant="destructive">
+                      <Trash2Icon />
+                    </Button>
+                  </DeleteTrainingButton>
+                </td>
+              </tr>
+            ))}
+            <TableErrorDisplay colSpan={6} isLoading={isLoading} error={error} />
+          </tbody>
+        </table>
 
-        {totalItems > 0 && (
-          <div className="px-4 py-3">
-            <AppPagination
-              totalItems={totalItems}
-              pageSize={pageSize}
-              setPageSize={setPageSize}
-              pageSizeOptions={[5, 10, 20, 50, 100]}
-              currentPage={currentPage}
-              setCurrentPage={setCurrentPage}
-            />
-          </div>
-        )}
+        <AppPagination
+          className="h-16 px-4"
+          totalItems={totalItems}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
+          pageSizeOptions={[5, 10, 20, 50, 100]}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+        />
       </div>
     </>
   );

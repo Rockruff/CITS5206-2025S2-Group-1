@@ -210,7 +210,9 @@ export default function WithSidebar({ children }: { children: React.ReactNode })
     <div className="max-md:contents md:flex md:[&>main]:flex-1">
       <Sidebar />
 
-      {["/dashboard/users", "/dashboard/groups", "/dashboard/training-records"].includes(pathname) ? (
+      {["/dashboard/users", "/dashboard/groups", "/dashboard/trainings", "/dashboard/training-records"].includes(
+        pathname,
+      ) ? (
         <main
           className={cn(
             "flex flex-col gap-4 p-4 md:gap-8 md:p-8", // expreimental alternative layout

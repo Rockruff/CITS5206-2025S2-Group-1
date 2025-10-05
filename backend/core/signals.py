@@ -1,8 +1,6 @@
 from django.db.models.signals import post_migrate
 from django.dispatch import receiver
-from .models import User, UserAlias
-
-DEFAULT_DEV_PASSWORD = "admin@123"  # DEV ONLY
+from .models import User, UserAlias, Training
 
 
 @receiver(post_migrate)
@@ -18,20 +16,33 @@ def create_hardcoded_admins(sender, **kwargs):
     ]:
         user, _ = User.objects.get_or_create(id=id, defaults={"name": name, "role": "ADMIN"})
         # ensure role
-        if getattr(user, "role", "") != "ADMIN":
+        if user.role != "ADMIN":
             user.role = "ADMIN"
-
-        # set a dev password only if none is set yet
-        try:
-            has_pwd = user.has_usable_password()
-        except Exception:
-            # if your custom User doesn’t implement this, assume no password
-            has_pwd = False
-
-        if not has_pwd:
-            user.set_password(DEFAULT_DEV_PASSWORD)
-
         user.save()
-
         for aid in [id, *aliases]:
             UserAlias.objects.get_or_create(id=aid, user=user)
+
+
+@receiver(post_migrate)
+def create_test_trainings(sender, **kwargs):
+    for name, type in (
+        ("WHS Induction", "LMS"),
+        ("WHS Risk Management", "LMS"),
+        ("Silica Awareness Training", "EXTERNAL"),
+        ("Lab Safety Course", "TRYBOOKING"),
+        ("Unsealed Radioisotopes course", "TRYBOOKING"),
+        ("Laser Safety Course", "TRYBOOKING"),
+        ("Snorkeler Fitness Assessment", "TRYBOOKING"),
+        ("Diver Assessment", "TRYBOOKING"),
+        ("Dive Supervisor Course", "TRYBOOKING"),
+        ("UWA Scientific Diver Course", "TRYBOOKING"),
+        ("Camms Training", "EXTERNAL"),
+        ("Fire Warden Training", "EXTERNAL"),
+        ("First Aid", "EXTERNAL"),
+        ("Local Area WHS Induction", "TRYBOOKING"),
+    ):
+        training, _ = Training.objects.get_or_create(name=name, defaults={"type": type})
+
+        if type == "LMS":
+            training.config = {"completance_score": 80}
+            training.save()

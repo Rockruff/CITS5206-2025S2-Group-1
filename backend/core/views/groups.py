@@ -20,7 +20,7 @@ class TrainingRowSerializer(serializers.ModelSerializer):
 
 class UserGroupViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdmin]
-    queryset = UserGroup.objects.all().order_by("-timestamp")
+    queryset = UserGroup.objects.all()
     serializer_class = UserGroupSerializer
 
     # GET /groups/{id}/trainings/

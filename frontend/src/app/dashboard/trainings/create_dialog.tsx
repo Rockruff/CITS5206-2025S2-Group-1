@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { revalidatePath } from "@/api/common";
 import { TrainingCreateRequest, createTraining } from "@/api/trainings";
@@ -27,14 +26,14 @@ export function CreateTrainingDialog({ children }: { children: React.ReactNode }
   const [description, setDescription] = useField("");
   const [type, setType] = useField<"LMS" | "TRYBOOKING" | "EXTERNAL">("LMS");
   const [expiry, setExpiry] = useField("");
-  const [completanceScore, setCompletanceScore] = useField("");
+  const [completanceScore, setCompletanceScore] = useField(90);
 
   const handleCreate = submit(async () => {
     const config: Record<string, any> = {};
 
     // LMS type requires completance_score
     if (type === "LMS") {
-      config.completance_score = parseInt(completanceScore) || 0;
+      config.completance_score = completanceScore;
     }
 
     const data: TrainingCreateRequest = {
@@ -47,9 +46,9 @@ export function CreateTrainingDialog({ children }: { children: React.ReactNode }
 
     await createTraining(data);
     revalidatePath("/api/trainings");
+    revalidatePath("/api/groups");
     reset();
     setOpen(false);
-    toast.success("Training Created");
   });
 
   return (
@@ -87,7 +86,7 @@ export function CreateTrainingDialog({ children }: { children: React.ReactNode }
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium">Type</label>
             <Select value={type} onValueChange={(value: "LMS" | "TRYBOOKING" | "EXTERNAL") => setType(value)}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select training type" />
               </SelectTrigger>
               <SelectContent>
@@ -101,7 +100,9 @@ export function CreateTrainingDialog({ children }: { children: React.ReactNode }
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium">Expiry (days)</label>
             <Input type="number" placeholder="0 for no expiry" value={expiry} onValueChange={setExpiry} min="0" />
-            <p className="text-muted-foreground text-xs">Number of days after which training expires (0 = no expiry)</p>
+            <p className="text-muted-foreground text-xs">
+              Validaty period of the underlying training records in days. (0 = no expiry)
+            </p>
           </div>
 
           {type === "LMS" && (
@@ -109,10 +110,9 @@ export function CreateTrainingDialog({ children }: { children: React.ReactNode }
               <label className="text-sm font-medium">Completion Score</label>
               <Input
                 type="number"
-                placeholder="90"
                 value={completanceScore}
-                onValueChange={setCompletanceScore}
-                min="0"
+                onChange={(e) => setCompletanceScore(e.target.valueAsNumber)}
+                min={0}
               />
               <p className="text-muted-foreground text-xs">Minimum score required to complete the training</p>
             </div>

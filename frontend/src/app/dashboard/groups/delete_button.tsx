@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "sonner";
 
 import { del, revalidatePath } from "@/api/common";
 import { UserGroup } from "@/api/groups";
@@ -19,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { useForm } from "@/hooks/form";
 
-export default function DeleteGroupButton({ group }: { group: UserGroup }) {
+export default function DeleteGroupDialog({ children, group }: { children: React.ReactNode; group: UserGroup }) {
   const [open, setOpen] = React.useState(false);
 
   const { working, error, submit } = useForm();
@@ -27,17 +26,13 @@ export default function DeleteGroupButton({ group }: { group: UserGroup }) {
   const onDelete = submit(async () => {
     await del(`/api/groups/${group.id}`);
     revalidatePath("/api/groups");
+    revalidatePath("/api/trainings");
     setOpen(false);
-    toast.success("Group Deleted");
   });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="destructive" size="sm">
-          Delete
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>

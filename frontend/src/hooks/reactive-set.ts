@@ -42,7 +42,7 @@ export function useSet<T>(initialItems: T[] = []): ReactiveSet<T> {
     },
 
     has(...items: T[]) {
-      return items.every((item) => set.has(item));
+      return items.length > 0 && items.every((item) => set.has(item));
     },
 
     clear() {

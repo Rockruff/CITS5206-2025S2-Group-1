@@ -15,7 +15,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-export default function DeleteTrainingButton({ id, name }: { id: string; name: string }) {
+export default function DeleteTrainingButton({
+  children,
+  id,
+  name,
+}: {
+  children: React.ReactNode;
+  id: string;
+  name: string;
+}) {
   const [open, setOpen] = useState(false);
   const [working, setWorking] = useState(false);
 
@@ -24,6 +32,7 @@ export default function DeleteTrainingButton({ id, name }: { id: string; name: s
     try {
       await deleteTraining(id);
       revalidatePath("/api/trainings");
+      revalidatePath("/api/groups");
       setOpen(false);
       toast.success("Training Deleted");
     } catch (error: any) {
@@ -35,11 +44,7 @@ export default function DeleteTrainingButton({ id, name }: { id: string; name: s
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="destructive">
-          Delete
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete Training</DialogTitle>

@@ -3,76 +3,14 @@ from django.db import transaction
 from rest_framework import serializers
 from urllib.parse import quote
 
-from core.models import User, UserAlias, TrainingRecord  # ⬅ added TrainingRecord import
+from core.models import User, UserAlias
 
 
 class UserSerializer(serializers.ModelSerializer):
-    avatar = serializers.SerializerMethodField()
-    aliases = serializers.SerializerMethodField()
-    groups = serializers.SerializerMethodField()
-    # NEW: exposed only when you pass context={"training": <Training instance>}
-    completion_status = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
-        fields = [
-            "id",
-            "avatar",
-            "name",
-            "role",
-            "aliases",
-            "groups",
-            "completion_status",
-        ]
-
-    def get_avatar(self, obj):
-        encoded_name = quote(obj.name)
-        return f"https://ui-avatars.com/api/?background=random&name={encoded_name}"
-
-    def get_aliases(self, obj):
-        return list(obj.aliases.values_list("id", flat=True))
-
-    def get_groups(self, obj):
-        return list(obj.groups.values_list("id", flat=True))
-
-    def get_completion_status(self, obj):
-        """
-        If the view passes context={"training": <Training>}, return:
-          "not_attempted" | "expired" | "failed" | "passed"
-        Otherwise return None (keeps the field harmless when not relevant).
-        """
-        training = self.context.get("training")
-        if not training:
-            return None
-
-        # Prefer prefetch if the view supplied it:
-        #   Prefetch("records", queryset=TrainingRecord.objects.filter(training=training),
-        #            to_attr="records_for_training")
-        recs = getattr(obj, "records_for_training", None)
-        if recs is None:
-            record = TrainingRecord.objects.filter(user=obj, training=training).first()
-        else:
-            record = recs[0] if recs else None
-
-        if not record:
-            return "not_attempted"
-
-        if record.is_expired:
-            return "expired"
-
-        details = record.details or {}
-        # 1) explicit boolean wins
-        if isinstance(details.get("completed"), bool):
-            return "passed" if details["completed"] else "failed"
-
-        # 2) fallback to score threshold from training.config
-        req = training.config.get("completance_score")
-        score = details.get("score")
-        if isinstance(req, (int, float)) and isinstance(score, (int, float)):
-            return "passed" if score >= req else "failed"
-
-        # 3) last resort: record exists and not expired → consider passed
-        return "passed"
+        fields = ["id", "avatar", "name", "role", "aliases", "groups"]
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -95,7 +33,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "name", "role"]
+        fields = ["id", "name", "role", "groups"]
 
     def validate_id(self, value):
         user = self.instance

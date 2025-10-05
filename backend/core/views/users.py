@@ -1,8 +1,3 @@
-import csv
-import io
-import re
-from typing import List, Dict
-
 from django.db import transaction
 from django.http import Http404
 from rest_framework import viewsets, status
@@ -24,13 +19,6 @@ from core.permissions import IsAuthenticated, IsAdmin
 
 from core.utils import NAME_COL, UID_COL
 from core.utils import parse_csv, parse_xlsx
-
-try:
-    import openpyxl
-
-    HAS_XLSX = True
-except Exception:
-    HAS_XLSX = False
 
 
 class UserViewSet(viewsets.GenericViewSet):
@@ -245,13 +233,11 @@ class UserViewSet(viewsets.GenericViewSet):
 
         return Response(UserSerializer(created, many=True).data)
 
-        # GET /users/{id}/trainings
-
+    # GET /users/{id}/trainings
     @action(detail=True, methods=["get"], url_path="trainings")
     def trainings(self, request, *args, **kwargs):
         """
-        List all trainings visible to this user via their groups, plus completion_status.
-        completion_status ∈ {"not_attempted", "expired", "failed", "passed"}.
+        List all trainings visible to this user via their groups, plus completion status.
         """
         user = self.get_object()
 
@@ -264,41 +250,13 @@ class UserViewSet(viewsets.GenericViewSet):
             .order_by("name")
         )
 
-        # Preload user’s records once for O(1) lookup by training id
-        rec_by_tid = {
-            rec.training_id: rec
-            for rec in TrainingRecord.objects.filter(user=user, training__in=trainings)
-        }
-
-        def status_for(training):
-            rec = rec_by_tid.get(training.id)
-            if not rec:
-                return "not_attempted"
-            if rec.is_expired:
-                return "expired"
-            # Prefer explicit flag in details; otherwise pass/fail by required score if present
-            details = rec.details or {}
-            if isinstance(details.get("completed"), bool):
-                return "passed" if details["completed"] else "failed"
-            req = training.config.get("completance_score")
-            score = details.get("score")
-            if isinstance(req, (int, float)) and isinstance(score, (int, float)):
-                return "passed" if score >= req else "failed"
-            # Fallback if we can’t tell
-            return "failed"
-
         results = []
-        for t in trainings:
-            results.append(
-                {
-                    "id": str(t.id),
-                    "name": t.name,
-                    "description": t.description,
-                    "type": t.type,
-                    "expiry": t.expiry,
-                    "config": t.config,
-                    "completion_status": status_for(t),
-                }
-            )
+
+        for training in trainings:
+            record = TrainingRecord.objects.filter(user=user, training=training)
+            if not record:
+                results.append({"training": training.id, "status": "PENDING"})
+            else:
+                results.append({"training": training.id, "status": record.status})
 
         return Response(results)

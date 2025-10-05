@@ -1,8 +1,10 @@
-from datetime import timedelta, timezone
+from datetime import timedelta
+from django.utils import timezone
 from django.db import models
 from django.core.validators import RegexValidator, MinValueValidator
 from django.contrib.auth.models import AbstractBaseUser
 from uuid import uuid4
+from urllib.parse import quote
 
 
 class HasUwaId(models.Model):
@@ -28,6 +30,11 @@ class User(HasUwaId, AbstractBaseUser):
     # Use the primary key to satisfy AbstractBaseUser requirements.
     USERNAME_FIELD = "id"
 
+    @property
+    def avatar(self):
+        encoded_name = quote(self.name)
+        return f"https://ui-avatars.com/api/?background=random&name={encoded_name}"
+
 
 class UserAlias(HasUwaId):
     # Target User
@@ -42,9 +49,9 @@ class UserGroup(models.Model):
     # Group Name (Unique)
     name = models.CharField(max_length=127, unique=True)
     # Group Description
-    description = models.CharField(max_length=255, default="")
+    description = models.CharField(max_length=255, default="", blank=True)
     # Group Members
-    users = models.ManyToManyField(User, related_name="groups")
+    users = models.ManyToManyField(User, related_name="groups", blank=True)
 
 
 class Training(models.Model):
@@ -61,7 +68,7 @@ class Training(models.Model):
     # Traing Name
     name = models.CharField(max_length=127, unique=True)
     # Training Description
-    description = models.CharField(max_length=255, default="")
+    description = models.CharField(max_length=255, default="", blank=True)
     # Training Type
     type = models.CharField(max_length=15, choices=TYPE_CHOICES)
     # Training Record Expiry (Number of Days, 0 == No Expiry)
@@ -69,7 +76,7 @@ class Training(models.Model):
     # Dynamic Configuration Object
     config = models.JSONField(default=dict)
     # Associated Groups
-    groups = models.ManyToManyField(UserGroup, related_name="trainings")
+    groups = models.ManyToManyField(UserGroup, related_name="trainings", blank=True)
 
 
 class TrainingRecord(models.Model):
@@ -80,15 +87,29 @@ class TrainingRecord(models.Model):
     # Source Training
     training = models.ForeignKey(Training, on_delete=models.CASCADE, related_name="records")
     # Completed at
-    timestamp = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField()
     # Dynamic payload (scores, certificates, external references, etc.)
     details = models.JSONField(default=dict)
 
-    @property
+    def is_completed(self):
+        if self.training.type == "LMS":
+            score = self.details.get("score")
+            completance_score = self.training.config.get("completance_score")
+            return isinstance(score, (int, float)) and score >= completance_score
+        return True  # Non-LMS trainings are always "passed"
+
     def is_expired(self):
         training_expiry = self.training.expiry
         expiry_date = self.timestamp + timedelta(days=training_expiry)
         return (training_expiry > 0) and (timezone.now() > expiry_date)
+
+    @property
+    def status(self):
+        if not self.is_completed():
+            return "FAILED"
+        if self.is_expired():
+            return "EXPIRED"
+        return "COMPLETED"
 
 
 class TrainingRecordAttachment(models.Model):

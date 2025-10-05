@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 
 import { patch, revalidatePath } from "@/api/common";
 import { UserGroup } from "@/api/groups";
@@ -59,7 +58,6 @@ export function GroupTrainingAssignmentDialog({
     revalidatePath("/api/groups");
     revalidatePath("/api/trainings");
     setOpen(false);
-    toast.success("Success");
   });
 
   return (

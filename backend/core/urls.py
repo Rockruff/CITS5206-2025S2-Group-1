@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views.users import UserViewSet
 from .views.groups import UserGroupViewSet
 from .views.trainings import TrainingViewSet
-from .views.training_records import TrainingRecordViewSet
+from .views.records import TrainingRecordViewSet
 
 router = DefaultRouter(trailing_slash=False)
 router.register("users", UserViewSet, basename="user")

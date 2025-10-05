@@ -1,13 +1,15 @@
 "use client";
 
-import { EllipsisIcon, PlusIcon } from "lucide-react";
+import { EditIcon, EllipsisIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import * as React from "react";
 
 import { CreateGroupDialog } from "./create_dialog";
-import DeleteGroupButton from "./delete_button";
+import DeleteGroupDialog from "./delete_button";
 import { GroupTrainingAssignmentDialog } from "./training_assignment_dialog";
 import { UpdateGroupDialog } from "./update_dialog";
 import { listGroups } from "@/api/groups";
+import TableHeader from "@/components/common/orderby";
+import TableErrorDisplay from "@/components/common/table-error-display";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -20,18 +22,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useSet } from "@/hooks/reactive-set";
-import { cn, kwMatch } from "@/lib/utils";
+import { useQueryParamsState } from "@/hooks/search";
+import { cn, formatDate } from "@/lib/utils";
 
 export default function () {
-  const { data: groups } = listGroups();
+  const [query, setQuery] = useQueryParamsState({
+    search: "",
+    order_by: "name",
+  });
+
+  const { data: groups, isLoading, error } = listGroups(query);
   const selection = useSet<string>();
-
-  const [q, setQ] = React.useState("");
-
-  const filtered = React.useMemo(
-    () => groups.filter((g) => kwMatch(g.name, q) || kwMatch(g.description, q)),
-    [q, groups],
-  );
 
   return (
     <>
@@ -42,7 +43,11 @@ export default function () {
 
       <div className="bg-background flex flex-1 flex-col overflow-hidden rounded-lg shadow">
         <div className="flex h-16 items-center gap-4 px-4">
-          <Input value={q} onValueChange={setQ} placeholder="Search groups by name or description…" />
+          <Input
+            value={query.search}
+            onValueChange={(v) => setQuery({ search: v })}
+            placeholder="Search by Name or Description..."
+          />
           <CreateGroupDialog>
             <Button size="icon">
               <PlusIcon />
@@ -72,40 +77,49 @@ export default function () {
 
         <table
           className={cn(
-            "flex-1 border-y",
             "[&_tbody_tr]:h-16 [&_thead_tr]:h-12", // height config
-            "flex flex-col overflow-x-auto overflow-y-hidden [&_thead,tbody]:min-w-200", // x-scrollable table
+            "flex flex-1 flex-col overflow-x-auto overflow-y-hidden", // x-scrollable table
             "[&_tbody]:flex-1 [&_tbody]:overflow-y-auto", // y-scrollable tbody
-            "[&_tbody]:mb-[-1px] [&_tr]:border-b", // borders, with deduplication at bottom
+            "border-y [&_tbody]:mb-[-1px] [&_tr]:border-b", // borders, with deduplication at bottom
             "[&_tr]:flex [&_tr]:items-stretch [&_tr]:gap-8 [&_tr]:px-8", // row style
-            "[&_th,td]:flex [&_th,td]:items-center [&_th,td]:gap-2", // cell style
-            "[&_th,td]:w-20 [&_th,td]:nth-1:w-4 [&_th,td]:nth-2:w-36 [&_th,td]:nth-3:flex-1 [&_th,td]:nth-5:w-40", // column width
+            "[&_td]:text-sm [&_th]:text-xs [&_th]:font-bold [&_th,td]:flex [&_th,td]:items-center [&_th,td]:gap-2", // cell style
+            "[&_th,td]:w-20 [&_th,td]:last:w-20 [&_th,td]:nth-1:w-4 [&_th,td]:nth-2:w-36 [&_th,td]:nth-3:flex-1 [&_thead,tbody]:min-w-200", // column width
           )}
         >
           <thead>
             <tr>
               <th>
                 <Checkbox
-                  checked={selection.has(...filtered.map((g) => g.id))}
-                  onCheckedChange={(v) => (v ? selection.add : selection.remove)(...filtered.map((g) => g.id))}
+                  checked={selection.has(...groups.map((g) => g.id))}
+                  onCheckedChange={(v) => (v ? selection.add : selection.remove)(...groups.map((g) => g.id))}
                 />
               </th>
               <th>
-                <div className="text-xs font-bold">Name</div>
+                <TableHeader
+                  orderBy={query.order_by}
+                  setOrderBy={(order_by) => setQuery({ order_by })}
+                  columns={["Name"]}
+                />
               </th>
               <th>
-                <div className="text-xs font-bold">Description</div>
+                <TableHeader
+                  orderBy={query.order_by}
+                  setOrderBy={(order_by) => setQuery({ order_by })}
+                  columns={["Description"]}
+                />
               </th>
               <th>
-                <div className="text-xs font-bold">Created</div>
+                <TableHeader
+                  orderBy={query.order_by}
+                  setOrderBy={(order_by) => setQuery({ order_by })}
+                  columns={["Created"]}
+                />
               </th>
-              <th>
-                <div className="mx-auto text-xs font-bold">Action</div>
-              </th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((g) => (
+            {groups.map((g) => (
               <tr key={g.id}>
                 <td>
                   <Checkbox
@@ -113,24 +127,24 @@ export default function () {
                     onCheckedChange={(v) => (v ? selection.add(g.id) : selection.remove(g.id))}
                   />
                 </td>
-                <td className="truncate text-sm">{g.name}</td>
-                <td className="truncate text-sm">{g.description}</td>
-                <td className="text-sm"> {new Date(g.timestamp).toLocaleDateString()}</td>
-                <td className="text-sm">
-                  <DeleteGroupButton group={g} />
+                <td className="truncate">{g.name}</td>
+                <td className="truncate">{g.description}</td>
+                <td>{formatDate(g.timestamp)}</td>
+                <td>
                   <UpdateGroupDialog group={g}>
-                    <Button size="sm">Update</Button>
+                    <Button size="icon">
+                      <EditIcon />
+                    </Button>
                   </UpdateGroupDialog>
+                  <DeleteGroupDialog group={g}>
+                    <Button size="icon" variant="destructive">
+                      <Trash2Icon />
+                    </Button>
+                  </DeleteGroupDialog>
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
-              <tr className="p-0! [&,&>*]:size-full!">
-                <td colSpan={5} className="text-muted-foreground justify-center">
-                  No groups match your search.
-                </td>
-              </tr>
-            )}
+            <TableErrorDisplay colSpan={5} isLoading={isLoading} error={error} />
           </tbody>
         </table>
       </div>

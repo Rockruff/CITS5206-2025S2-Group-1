@@ -28,7 +28,7 @@ function fetchData(search: string) {
   };
 }
 
-function renderData({ value: id }: { value: string }) {
+export function UserRenderer({ value: id }: { value: string }) {
   const { data: user } = getUser(id);
   if (!user) return null;
 
@@ -63,7 +63,7 @@ export function UserSelect({
       value={value}
       onValueChange={onValueChange}
       fetchData={fetchData}
-      renderData={renderData}
+      renderData={UserRenderer}
     />
   );
 }

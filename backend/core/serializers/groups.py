@@ -3,17 +3,10 @@ from core.models import UserGroup, User, Training
 
 
 class UserGroupSerializer(serializers.ModelSerializer):
-    users = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(), many=True, required=False
-    )
-    # NEW: expose trainings attached to this group
-    trainings = serializers.PrimaryKeyRelatedField(
-        queryset=Training.objects.all(), many=True, required=False
-    )
 
     class Meta:
         model = UserGroup
-        fields = ["id", "name", "description", "users", "trainings", "timestamp"]
+        fields = ["id", "name", "description", "trainings", "timestamp"]
         read_only_fields = ["id", "timestamp"]
 
 
@@ -43,12 +36,3 @@ class GroupBatchManageTrainingsSerializer(serializers.Serializer):
         required=False,
         default=list,
     )
-
-
-class UserGroupBriefSerializer(serializers.ModelSerializer):
-    """Lightweight group for embedding inside other payloads."""
-
-    class Meta:
-        model = UserGroup
-        fields = ["id", "name", "description", "timestamp"]
-        read_only_fields = ["id", "timestamp"]

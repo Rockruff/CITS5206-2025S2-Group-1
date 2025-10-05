@@ -1,9 +1,7 @@
 "use client";
 
-import { BubblesIcon, CalendarIcon, CircleXIcon, EllipsisIcon, LoaderCircleIcon, PlusIcon } from "lucide-react";
+import { EditIcon, EllipsisIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import React from "react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 import { useSWRConfig } from "swr";
 
 import {
@@ -12,10 +10,13 @@ import {
   DeleteTrainingRecordDialog,
   EditTrainingRecordDialog,
 } from "./dialogs";
-import { listTrainingRecords } from "@/api/training-records";
-import { listTrainings } from "@/api/trainings";
-import { listUsers } from "@/api/users";
+import { TrainingRecord, listTrainingRecords } from "@/api/training-records";
+import { TrainingRenderer, TrainingSingleSelect } from "@/components/app/training-select";
+import { UserRenderer } from "@/components/app/user-select";
+import DateRangePicker from "@/components/common/date-range-picker";
+import TableHeader from "@/components/common/orderby";
 import AppPagination from "@/components/common/pager";
+import TableErrorDisplay from "@/components/common/table-error-display";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -27,10 +28,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSet } from "@/hooks/reactive-set";
 import { useQueryParamsState } from "@/hooks/search";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
+
+function StatusBadge({ status }: { status: TrainingRecord["status"] }) {
+  return (
+    <div
+      className={cn("rounded-full px-2 py-1 text-[.66rem]", {
+        "bg-red-100 text-red-800": status === "FAILED",
+        "bg-yellow-100 text-yellow-800": status === "EXPIRED",
+        "bg-green-100 text-green-800": status === "COMPLETED",
+      })}
+    >
+      {status}
+    </div>
+  );
+}
 
 export default function TrainingRecords() {
   const { mutate } = useSWRConfig();
@@ -38,38 +52,15 @@ export default function TrainingRecords() {
 
   const [query, setQuery] = useQueryParamsState({
     search: "",
-    user: "",
     training: "",
-    order_by: "timestamp",
+    order_by: "id",
     page: 1,
     page_size: 10,
+    from: "",
+    to: "",
   });
 
-  const [dateRange, setDateRange] = React.useState<[Date | null, Date | null]>([null, null]);
-  const [showDatePicker, setShowDatePicker] = React.useState(false);
-
   const recordsReq = listTrainingRecords(query);
-  const usersReq = listUsers({ page_size: 1000 });
-  const trainingsReq = listTrainings();
-  const [editOpen, setEditOpen] = React.useState(false);
-  const [editingRecordId, setEditingRecordId] = React.useState<string | null>(null);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  const getStatusBadge = (isExpired: boolean) => {
-    return (
-      <span
-        className={cn(
-          "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
-          isExpired ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800",
-        )}
-      >
-        {isExpired ? "Expired" : "Valid"}
-      </span>
-    );
-  };
 
   return (
     <>
@@ -84,80 +75,28 @@ export default function TrainingRecords() {
             type="text"
             value={query.search}
             onValueChange={(value) => setQuery({ search: value, page: 1 })}
-            placeholder="Search by user or training..."
+            placeholder="Search by User Name or User ID..."
           />
 
           <div className="flex items-center gap-2 max-md:hidden">
-            <label className="text-muted-foreground text-sm">User:</label>
-            <Select value={query.user} onValueChange={(v) => setQuery({ user: v ?? "", page: 1 })}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Any User" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={undefined as unknown as string}>Any User</SelectItem>
-                {usersReq.data?.items.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-2 max-md:hidden">
             <label className="text-muted-foreground text-sm">Training:</label>
-            <Select value={query.training} onValueChange={(v) => setQuery({ training: v ?? "", page: 1 })}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Any Training" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={undefined as unknown as string}>Any Training</SelectItem>
-                {trainingsReq.data?.map((training) => (
-                  <SelectItem key={training.id} value={training.id}>
-                    {training.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <TrainingSingleSelect
+              value={query.training}
+              onValueChange={(v) => setQuery({ training: v, page: 1 })}
+              placeholder="Any Training"
+              cleartext="Any Training"
+            />
           </div>
 
-          <div className="relative">
-            <Button
-              size="icon"
-              variant={dateRange[0] && dateRange[1] ? "default" : "outline"}
-              onClick={() => setShowDatePicker(!showDatePicker)}
-              title={
-                dateRange[0] && dateRange[1]
-                  ? `${dateRange[0].toLocaleDateString()} - ${dateRange[1].toLocaleDateString()}`
-                  : "Select date range"
-              }
-            >
-              <CalendarIcon />
-            </Button>
-            {showDatePicker && (
-              <div className="absolute top-full right-0 z-10 mt-1 rounded-md border bg-white shadow-lg">
-                <DatePicker
-                  selectsRange={true}
-                  startDate={dateRange[0]}
-                  endDate={dateRange[1]}
-                  onChange={(update) => {
-                    setDateRange(update);
-                    if (update[0] && update[1]) {
-                      setShowDatePicker(false);
-                      // Update query with date range
-                      setQuery({
-                        page: 1,
-                      });
-                    }
-                  }}
-                  isClearable={true}
-                  inline
-                />
-              </div>
-            )}
-          </div>
+          <DateRangePicker
+            from={query.from}
+            to={query.to}
+            onChange={(from, to) => {
+              setQuery({ from, to, page: 1 });
+            }}
+          />
 
-          <CreateTrainingRecordDialog selection={selection}>
+          <CreateTrainingRecordDialog>
             <Button size="icon">
               <PlusIcon />
             </Button>
@@ -182,127 +121,98 @@ export default function TrainingRecords() {
           </DropdownMenu>
         </div>
 
-        <div className="contents [&>*]:flex-1 [&>*]:border-y">
-          {recordsReq.isLoading ? (
-            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
-              <LoaderCircleIcon className="animate-spin" />
-              <span className="text-sm">Loading Data...</span>
-            </div>
-          ) : recordsReq.error ? (
-            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
-              <CircleXIcon />
-              <span className="text-sm">{recordsReq.error.error}</span>
-            </div>
-          ) : recordsReq.data?.results.length === 0 ? (
-            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2">
-              <BubblesIcon />
-              <span className="text-sm">No Training Records Found</span>
-            </div>
-          ) : (
-            <table
-              className={cn(
-                "[&_tbody_tr]:h-16 [&_thead_tr]:h-12",
-                "flex flex-col overflow-hidden",
-                "[&_tbody]:flex-1 [&_tbody]:overflow-y-auto",
-                "[&_tbody]:mb-[-1px] [&_tr]:border-b",
-                "[&_tr]:flex [&_tr]:items-stretch [&_tr]:gap-4 [&_tr]:px-4",
-                "[&_th,td]:flex [&_th,td]:items-center [&_th,td]:gap-2",
-                "[&_th,td]:nth-1:w-12 [&_th,td]:nth-2:w-48 [&_th,td]:nth-3:w-56 [&_th,td]:nth-4:w-32 [&_th,td]:nth-5:w-20 [&_th,td]:nth-6:w-32",
-              )}
-            >
-              <thead>
-                <tr>
-                  <th>
-                    <Checkbox
-                      checked={selection.has(...(recordsReq.data?.results.map((record) => record.id) || []))}
-                      onCheckedChange={(v) =>
-                        (v ? selection.add : selection.remove)(
-                          ...(recordsReq.data?.results.map((record) => record.id) || []),
-                        )
-                      }
-                    />
-                  </th>
-                  <th>
-                    <div className="text-xs font-bold">User</div>
-                  </th>
-                  <th>
-                    <div className="text-xs font-bold">Training</div>
-                  </th>
-                  <th>
-                    <div className="text-xs font-bold">Completed</div>
-                  </th>
-                  <th>
-                    <div className="text-xs font-bold">Status</div>
-                  </th>
-                  <th>
-                    <div className="text-xs font-bold">Action</div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {recordsReq.data?.results.map((record) => (
-                  <tr key={record.id}>
-                    <td>
-                      <Checkbox
-                        checked={selection.has(record.id)}
-                        onCheckedChange={(v) => (v ? selection.add(record.id) : selection.remove(record.id))}
-                      />
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="hoctive:underline overflow-hidden text-left"
-                        onClick={() => {
-                          setEditingRecordId(record.id);
-                          setEditOpen(true);
-                        }}
-                      >
-                        <div className="truncate text-sm">
-                          {usersReq.data?.items.find((u) => u.id === record.user)?.name || `User ${record.user}`}
-                        </div>
-                        <div className="text-muted-foreground text-xs">{record.user}</div>
-                      </button>
-                    </td>
-                    <td>
-                      <div className="overflow-hidden text-left">
-                        <div className="truncate text-sm">
-                          {trainingsReq.data?.find((t) => t.id === record.training)?.name ||
-                            `Training ${record.training}`}
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="text-sm">{formatDate(record.timestamp)}</div>
-                    </td>
-                    <td>{getStatusBadge(record.expired)}</td>
-                    <td>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setEditingRecordId(record.id);
-                            setEditOpen(true);
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <DeleteTrainingRecordDialog record={record} selection={selection}>
-                          <Button size="sm" variant="destructive">
-                            Delete
-                          </Button>
-                        </DeleteTrainingRecordDialog>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <table
+          className={cn(
+            "[&_tbody_tr]:h-16 [&_thead_tr]:h-12", // height config
+            "flex flex-1 flex-col overflow-x-auto overflow-y-hidden", // x-scrollable table
+            "[&_tbody]:flex-1 [&_tbody]:overflow-y-auto", // y-scrollable tbody
+            "border-y [&_tbody]:mb-[-1px] [&_tr]:border-b", // borders, with deduplication at bottom
+            "[&_tr]:flex [&_tr]:items-stretch [&_tr]:gap-8 [&_tr]:px-8", // row style
+            "[&_td]:text-sm [&_th]:text-xs [&_th]:font-bold [&_th,td]:flex [&_th,td]:items-center [&_th,td]:gap-2", // cell style
+            "[&_th,td]:w-20 [&_th,td]:last:w-20 [&_th,td]:nth-1:w-4 [&_th,td]:nth-2:flex-1 [&_th,td]:nth-3:w-64 [&_thead,tbody]:min-w-160", // column width
           )}
-        </div>
+        >
+          <thead>
+            <tr>
+              <th>
+                <Checkbox
+                  checked={selection.has(...(recordsReq.data?.items.map((record) => record.id) || []))}
+                  onCheckedChange={(v) =>
+                    (v ? selection.add : selection.remove)(...(recordsReq.data?.items.map((record) => record.id) || []))
+                  }
+                />
+              </th>
+              <th>
+                <TableHeader
+                  orderBy={query.order_by}
+                  setOrderBy={(order_by) => setQuery({ order_by })}
+                  columns={["Name", "ID"]}
+                />
+              </th>
+              <th>
+                <TableHeader
+                  orderBy={query.order_by}
+                  setOrderBy={(order_by) => setQuery({ order_by })}
+                  columns={["Training"]}
+                />
+              </th>
+              <th>
+                <TableHeader
+                  orderBy={query.order_by}
+                  setOrderBy={(order_by) => setQuery({ order_by })}
+                  columns={["Completed"]}
+                />
+              </th>
+              <th>
+                <div className="text-xs font-bold">Status</div>
+              </th>
+              <th>
+                <div className="text-xs font-bold">Action</div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {recordsReq.data?.items.map((record) => (
+              <tr key={record.id}>
+                <td>
+                  <Checkbox
+                    checked={selection.has(record.id)}
+                    onCheckedChange={(v) => (v ? selection.add(record.id) : selection.remove(record.id))}
+                  />
+                </td>
+                <td>
+                  <UserRenderer value={record.user} />
+                </td>
+                <td>
+                  <TrainingRenderer value={record.training} />
+                </td>
+                <td>{formatDate(record.timestamp)}</td>
+                <td>
+                  <StatusBadge status={record.status} />
+                </td>
+                <td>
+                  <div className="flex gap-2">
+                    <EditTrainingRecordDialog record={record}>
+                      <Button size="icon">
+                        <EditIcon />
+                      </Button>
+                    </EditTrainingRecordDialog>
+                    <DeleteTrainingRecordDialog record={record} selection={selection}>
+                      <Button size="icon" variant="destructive">
+                        <Trash2Icon />
+                      </Button>
+                    </DeleteTrainingRecordDialog>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            <TableErrorDisplay colSpan={6} isLoading={recordsReq.isLoading} error={recordsReq.error} />
+          </tbody>
+        </table>
 
         <AppPagination
           className="h-16 px-4"
-          totalItems={recordsReq.data?.count || 0}
+          totalItems={recordsReq.data?.total_items || 0}
           pageSize={query.page_size}
           setPageSize={(v) => setQuery({ page_size: v })}
           pageSizeOptions={[5, 10, 20, 50, 100, 200, 500, 1000]}
@@ -310,21 +220,6 @@ export default function TrainingRecords() {
           setCurrentPage={(v) => setQuery({ page: v })}
         />
       </div>
-
-      <EditTrainingRecordDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        record={recordsReq.data?.results.find((r) => r.id === editingRecordId) || null}
-        onSaved={() => {
-          mutate(
-            (key) =>
-              (typeof key === "string" && key.startsWith("/api/training-records")) ||
-              (Array.isArray(key) && key[0] === "/api/training-records"),
-            undefined,
-            { revalidate: true },
-          );
-        }}
-      />
     </>
   );
 }

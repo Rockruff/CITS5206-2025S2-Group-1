@@ -1,14 +1,14 @@
 # core/serializers/trainings.py
 from rest_framework import serializers
-from core.models import Training, UserGroup
+from core.models import Training, UserGroup, User
 
 
-class UserGroupBriefSerializer(serializers.ModelSerializer):
-    """Small nested serializer to show groups on a training."""
+class TrainingUserStatusSerializer(serializers.ModelSerializer):
+    status = serializers.CharField()
 
     class Meta:
-        model = UserGroup
-        fields = ["id", "name", "description", "timestamp"]  # no users list here
+        model = User
+        fields = ["id", "status"]
 
 
 class TrainingSerializer(serializers.ModelSerializer):
@@ -29,9 +29,7 @@ class TrainingSerializer(serializers.ModelSerializer):
         ]
 
     def get_groups(self, obj):
-        # Expect views to prefetch_related("groups") for efficiency
-        groups_qs = getattr(obj, "groups", None).all() if hasattr(obj, "groups") else []
-        return UserGroupBriefSerializer(groups_qs, many=True).data
+        return list(obj.groups.values_list("id", flat=True))
 
 
 class TrainingCreateSerializer(serializers.ModelSerializer):
@@ -60,7 +58,7 @@ class TrainingCreateSerializer(serializers.ModelSerializer):
 class TrainingUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Training
-        fields = ["name", "description", "expiry", "config"]
+        fields = ["name", "description", "expiry", "config", "groups"]
 
     def validate_name(self, value):
         if (

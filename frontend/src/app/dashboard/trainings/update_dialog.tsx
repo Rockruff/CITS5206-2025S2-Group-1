@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { revalidatePath } from "@/api/common";
 import { Training, TrainingUpdateRequest, updateTraining } from "@/api/trainings";
+import { UserGroupSelectV2 } from "@/components/app/user-group-select";
 import SubmitButton from "@/components/common/submit";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +17,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "@/hooks/form";
 
 export function UpdateTrainingDialog({ training, children }: { training: Training; children: React.ReactNode }) {
@@ -25,16 +25,16 @@ export function UpdateTrainingDialog({ training, children }: { training: Trainin
   const { useField, error, working, submit } = useForm();
   const [name, setName] = useField(training.name);
   const [description, setDescription] = useField(training.description);
-  const [type, setType] = useField<"LMS" | "TRYBOOKING" | "EXTERNAL">(training.type);
-  const [expiry, setExpiry] = useField(training.expiry.toString());
-  const [completanceScore, setCompletanceScore] = useField(training.config?.completance_score?.toString() || "");
+  const [expiry, setExpiry] = useField<number>(training.expiry);
+  const [completanceScore, setCompletanceScore] = useField<number>(training.config.completance_score || 100);
+  const [groups, setGroups] = useField<string[]>(training.groups);
 
   const handleUpdate = submit(async () => {
     const config: Record<string, any> = { ...training.config };
 
     // LMS type requires completance_score
-    if (type === "LMS") {
-      config.completance_score = parseInt(completanceScore) || 0;
+    if (training.type === "LMS") {
+      config.completance_score = completanceScore;
     } else {
       // Remove completance_score if not LMS type
       delete config.completance_score;
@@ -43,12 +43,14 @@ export function UpdateTrainingDialog({ training, children }: { training: Trainin
     const data: TrainingUpdateRequest = {
       name,
       description,
-      expiry: parseInt(expiry) || 0,
+      expiry,
       config,
+      groups,
     };
 
     await updateTraining(training.id, data);
     revalidatePath("/api/trainings");
+    revalidatePath("/api/groups");
     setOpen(false);
     toast.success("Training Updated");
   });
@@ -78,34 +80,32 @@ export function UpdateTrainingDialog({ training, children }: { training: Trainin
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Type</label>
-            <Select value={type} onValueChange={(value: "LMS" | "TRYBOOKING" | "EXTERNAL") => setType(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select training type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="LMS">LMS</SelectItem>
-                <SelectItem value="TRYBOOKING">TryBooking</SelectItem>
-                <SelectItem value="EXTERNAL">External</SelectItem>
-              </SelectContent>
-            </Select>
+            <label className="text-sm font-medium">Groups</label>
+            <UserGroupSelectV2 value={groups} onValueChange={setGroups} />
           </div>
 
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium">Expiry (days)</label>
-            <Input type="number" placeholder="0 for no expiry" value={expiry} onValueChange={setExpiry} min="0" />
-            <p className="text-muted-foreground text-xs">Number of days after which training expires (0 = no expiry)</p>
+            <Input
+              type="number"
+              placeholder="0 for no expiry"
+              value={expiry}
+              onChange={(e) => setExpiry(e.target.valueAsNumber)}
+              min={0}
+            />
+            <p className="text-muted-foreground text-xs">
+              Validaty period of the underlying training records in days. (0 = no expiry)
+            </p>
           </div>
 
-          {type === "LMS" && (
+          {training.type === "LMS" && (
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium">Completion Score</label>
               <Input
                 type="number"
-                placeholder="90"
                 value={completanceScore}
-                onValueChange={setCompletanceScore}
-                min="0"
+                onChange={(e) => setCompletanceScore(e.target.valueAsNumber)}
+                min={0}
               />
               <p className="text-muted-foreground text-xs">Minimum score required to complete the training</p>
             </div>

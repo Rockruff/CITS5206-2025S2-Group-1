@@ -7,7 +7,7 @@ export interface TrainingRecord {
   user: string; // user_id
   training: string; // training_id
   details: Record<string, any>;
-  expired: boolean;
+  status: "FAILED" | "EXPIRED" | "COMPLETED";
 }
 
 export interface TrainingRecordCreateRequest {
@@ -27,34 +27,51 @@ export interface TrainingRecordBatchCreateRequest {
 }
 
 export interface ListTrainingRecordResponse {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: TrainingRecord[];
+  page: number;
+  page_size: number;
+  total_pages: number;
+  total_items: number;
+  items: TrainingRecord[];
 }
 
 // List training records with filtering and pagination
 export function listTrainingRecords({
   search,
-  user,
   training,
-  order_by = "timestamp",
+  from,
+  to,
+  order_by,
   page = 1,
   page_size = 10,
 }: {
   search?: string;
-  user?: string;
   training?: string;
+  from?: string;
+  to?: string;
   order_by?: string;
   page?: number;
   page_size?: number;
 }) {
   const params: Record<string, any> = {};
 
-  if (search) params.search = search;
-  if (user) params.user = user;
+  if (search) {
+    const id = parseInt(search);
+    const key = Number.isNaN(id) ? "user_name" : "user_id";
+    params[key] = search;
+  }
+
   if (training) params.training = training;
-  if (order_by) params.order_by = order_by;
+  if (order_by) {
+    params.order_by = order_by;
+    if (order_by === "completed") params.order_by = "timestamp"; // alias
+    if (order_by === "-completed") params.order_by = "-timestamp"; // alias
+    if (order_by === "id") params.order_by = "user_id"; // alias
+    if (order_by === "-id") params.order_by = "-user_id"; // alias
+    if (order_by === "name") params.order_by = "user_name"; // alias
+    if (order_by === "-name") params.order_by = "-user_name"; // alias
+  }
+  if (from) params.from = from;
+  if (to) params.to = to;
 
   params.page = page;
   params.page_size = page_size;
@@ -63,10 +80,11 @@ export function listTrainingRecords({
 
   if (!data || error || isLoading) {
     data = {
-      count: 0,
-      next: null,
-      previous: null,
-      results: [],
+      page: page,
+      page_size: page_size,
+      total_pages: 0,
+      total_items: 0,
+      items: [],
     } satisfies ListTrainingRecordResponse;
   }
 

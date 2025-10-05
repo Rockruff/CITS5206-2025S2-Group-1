@@ -157,13 +157,15 @@ export function del<T>(path: string, params: Record<string, any> = {}) {
 // --------------------
 
 export function swr<T>(
-  path: string,
+  path: string | null,
   params: Record<string, any> = {},
-  config?: SWRConfiguration<T>,
+  config?: SWRConfiguration<T, APIError>,
 ): SWRResponse<T, APIError> {
-  return useSWR<T, APIError, [string, Record<string, any>]>(
-    [path, params],
-    ([url, query]) => get<T>(url, query),
+  // Only build the SWR key if path exists
+  const key: [string, Record<string, any>] | null = path ? [path, params] : null;
+  return useSWR<T, APIError, [string, Record<string, any>] | null>(
+    key,
+    key ? ([url, query]) => get<T>(url, query) : null,
     config,
   );
 }

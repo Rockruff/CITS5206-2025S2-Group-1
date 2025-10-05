@@ -2,7 +2,6 @@ import { CheckedState } from "@radix-ui/react-checkbox";
 import { FileIcon, PlusIcon, XIcon } from "lucide-react";
 import prettyBytes from "pretty-bytes";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 
 import { del, patch, post, revalidatePath } from "@/api/common";
 import { User } from "@/api/users";
@@ -45,7 +44,6 @@ export function DeleteUserDialog({
     selection.remove(user.id);
     revalidatePath("/api/users");
     setOpen(false);
-    toast.success("User Deleted");
   });
 
   return (
@@ -103,7 +101,6 @@ export function CreateUserDialog({
     revalidatePath("/api/users");
     setOpen(false); // close after success
     if (addToSelection) selection.add(user.id);
-    toast.success("Create User: Success");
   });
 
   const handleBatchCreate = submit(async () => {
@@ -113,7 +110,6 @@ export function CreateUserDialog({
     revalidatePath("/api/users");
     setOpen(false); // close after success
     if (addToSelection) selection.add(...users.map((user) => user.id));
-    toast.success("Create User: Success");
   });
 
   return (
@@ -239,7 +235,6 @@ export function UserAddRemoveGroupDialog({
 
     revalidatePath("/api/users");
     setOpen(false);
-    toast.success("Success");
   });
 
   return (
@@ -289,7 +284,6 @@ function AddAliasDialog({ children, user }: { children: React.ReactNode; user: U
   const handler = submit(async () => {
     await post(`/api/users/${user.id}/aliases`, { id: alias });
     revalidatePath("/api/users");
-    revalidatePath(`/api/users/${user.id}`);
   });
 
   return (
@@ -331,7 +325,6 @@ function RemoveAliasDialog({ children, user, alias }: { children: React.ReactNod
   const handler = submit(async () => {
     await del(`/api/users/${user.id}/aliases`, { id: alias });
     revalidatePath("/api/users");
-    revalidatePath(`/api/users/${user.id}`);
   });
 
   return (
@@ -375,19 +368,10 @@ export function EditUserDialog({ children, user }: { children: React.ReactNode; 
       id,
       name,
       role,
+      groups,
     });
 
-    const prevGroups = user.groups;
-    const nextGroups = groups;
-    const toAdd = nextGroups.filter((id) => !prevGroups.includes(id));
-    const toRemove = prevGroups.filter((id) => !nextGroups.includes(id));
-    const ops: Array<{ group: string; add?: string[]; remove?: string[] }> = [];
-    if (toAdd.length) ops.push(...toAdd.map((gid) => ({ group: gid, add: [user.id] })));
-    if (toRemove.length) ops.push(...toRemove.map((gid) => ({ group: gid, remove: [user.id] })));
-    if (ops.length) await patch(`/api/groups/batch/users`, ops);
-
     revalidatePath("/api/users");
-    revalidatePath(`/api/users/${user.id}`);
   });
 
   return (
@@ -413,7 +397,9 @@ export function EditUserDialog({ children, user }: { children: React.ReactNode; 
               ))}
             </SelectContent>
           </Select>
-          <div className="text-muted-foreground text-sm">Currently, Primary ID does not support update.</div>
+          <div className="text-muted-foreground text-xs">
+            Currently, Primary ID does not support update due to a constraint in Django.
+          </div>
         </div>
         <div className="grid gap-2">
           <label className="text-sm">Aliases</label>
