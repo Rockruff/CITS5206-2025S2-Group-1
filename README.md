@@ -61,6 +61,7 @@ Navigate to the root repository and then choose the frontend folder and run the 
 
 ```bash
 cd frontend
+npm install  #installs all the required dependencies.
 npm run dev
 ```
 
