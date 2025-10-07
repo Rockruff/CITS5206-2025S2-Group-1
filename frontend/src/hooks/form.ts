@@ -1,4 +1,5 @@
 import { Dispatch, SetStateAction, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { APIError } from "@/api/common";
 
@@ -106,6 +107,7 @@ export function useForm() {
 
       try {
         await callback();
+        toast.success("Success");
       } catch (e: any) {
         let err = transformDRFError(e);
         if (!err) err = String(e);

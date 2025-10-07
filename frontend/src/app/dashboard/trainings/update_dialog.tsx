@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { revalidatePath } from "@/api/common";
 import { Training, TrainingUpdateRequest, updateTraining } from "@/api/trainings";
@@ -52,7 +51,6 @@ export function UpdateTrainingDialog({ training, children }: { training: Trainin
     revalidatePath("/api/trainings");
     revalidatePath("/api/groups");
     setOpen(false);
-    toast.success("Training Updated");
   });
 
   return (
@@ -64,55 +62,53 @@ export function UpdateTrainingDialog({ training, children }: { training: Trainin
           <DialogDescription>Update the training course details.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Name</label>
-            <Input placeholder="e.g. Laboratory Safety Training" value={name} onValueChange={setName} />
-          </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium">Name</label>
+          <Input placeholder="e.g. Laboratory Safety Training" value={name} onValueChange={setName} />
+        </div>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Description</label>
-            <Input
-              placeholder="e.g. Basic laboratory safety procedures for students"
-              value={description}
-              onValueChange={setDescription}
-            />
-          </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium">Description</label>
+          <Input
+            placeholder="e.g. Basic laboratory safety procedures for students"
+            value={description}
+            onValueChange={setDescription}
+          />
+        </div>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Groups</label>
-            <UserGroupSelectV2 value={groups} onValueChange={setGroups} />
-          </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium">Groups</label>
+          <UserGroupSelectV2 value={groups} onValueChange={setGroups} />
+        </div>
 
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium">Expiry (days)</label>
+          <Input
+            type="number"
+            placeholder="0 for no expiry"
+            value={expiry}
+            onChange={(e) => setExpiry(e.target.valueAsNumber)}
+            min={0}
+          />
+          <p className="text-muted-foreground text-xs">
+            Validaty period of the underlying training records in days. (0 = no expiry)
+          </p>
+        </div>
+
+        {training.type === "LMS" && (
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Expiry (days)</label>
+            <label className="text-sm font-medium">Completion Score</label>
             <Input
               type="number"
-              placeholder="0 for no expiry"
-              value={expiry}
-              onChange={(e) => setExpiry(e.target.valueAsNumber)}
+              value={completanceScore}
+              onChange={(e) => setCompletanceScore(e.target.valueAsNumber)}
               min={0}
             />
-            <p className="text-muted-foreground text-xs">
-              Validaty period of the underlying training records in days. (0 = no expiry)
-            </p>
+            <p className="text-muted-foreground text-xs">Minimum score required to complete the training</p>
           </div>
+        )}
 
-          {training.type === "LMS" && (
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Completion Score</label>
-              <Input
-                type="number"
-                value={completanceScore}
-                onChange={(e) => setCompletanceScore(e.target.valueAsNumber)}
-                min={0}
-              />
-              <p className="text-muted-foreground text-xs">Minimum score required to complete the training</p>
-            </div>
-          )}
-
-          <div className="text-destructive text-sm empty:hidden">{error}</div>
-        </div>
+        <div className="text-destructive text-sm empty:hidden">{error}</div>
 
         <DialogFooter>
           <DialogClose asChild>
