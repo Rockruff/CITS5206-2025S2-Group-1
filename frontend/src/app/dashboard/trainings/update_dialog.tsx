@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Input, NumberInput } from "@/components/ui/input";
 import { useForm } from "@/hooks/form";
 
 export function UpdateTrainingDialog({ training, children }: { training: Training; children: React.ReactNode }) {
@@ -83,13 +83,7 @@ export function UpdateTrainingDialog({ training, children }: { training: Trainin
 
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium">Expiry (days)</label>
-          <Input
-            type="number"
-            placeholder="0 for no expiry"
-            value={expiry}
-            onChange={(e) => setExpiry(e.target.valueAsNumber)}
-            min={0}
-          />
+          <NumberInput value={expiry} onValueChange={setExpiry} />
           <p className="text-muted-foreground text-xs">
             Validaty period of the underlying training records in days. (0 = no expiry)
           </p>
@@ -98,12 +92,7 @@ export function UpdateTrainingDialog({ training, children }: { training: Trainin
         {training.type === "LMS" && (
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium">Completion Score</label>
-            <Input
-              type="number"
-              value={completanceScore}
-              onChange={(e) => setCompletanceScore(e.target.valueAsNumber)}
-              min={0}
-            />
+            <NumberInput value={completanceScore} onValueChange={setCompletanceScore} />
             <p className="text-muted-foreground text-xs">Minimum score required to complete the training</p>
           </div>
         )}

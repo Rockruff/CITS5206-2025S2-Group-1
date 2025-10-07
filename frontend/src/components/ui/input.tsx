@@ -38,4 +38,18 @@ function Input({ onChange, onValueChange, ...props }: InputProps) {
   );
 }
 
-export { Input };
+function NumberInput({ value, onValueChange }: { value: number; onValueChange: (value: number) => void }) {
+  return (
+    <InputOriginal
+      type="number"
+      value={String(value)}
+      onChange={(e) => {
+        let value = e.target.valueAsNumber;
+        if (Number.isNaN(value)) value = 0;
+        onValueChange(value);
+      }}
+    />
+  );
+}
+
+export { Input, NumberInput };

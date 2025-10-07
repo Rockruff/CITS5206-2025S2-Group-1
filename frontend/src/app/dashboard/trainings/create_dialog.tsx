@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Input, NumberInput } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "@/hooks/form";
 
@@ -107,12 +107,7 @@ export function CreateTrainingDialog({ children }: { children: React.ReactNode }
         {type === "LMS" && (
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium">Completion Score</label>
-            <Input
-              type="number"
-              value={completanceScore}
-              onChange={(e) => setCompletanceScore(e.target.valueAsNumber)}
-              min={0}
-            />
+            <NumberInput value={completanceScore} onValueChange={setCompletanceScore} />
             <p className="text-muted-foreground text-xs">Minimum score required to complete the training</p>
           </div>
         )}
