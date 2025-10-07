@@ -1,13 +1,11 @@
 # core/serializers/users.py
 from django.db import transaction
 from rest_framework import serializers
-from urllib.parse import quote
 
 from core.models import User, UserAlias
 
 
 class UserSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = User
         fields = ["id", "avatar", "name", "role", "aliases", "groups"]

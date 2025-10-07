@@ -1,4 +1,3 @@
-from datetime import datetime
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -154,7 +153,6 @@ class TrainingRecordViewSet(viewsets.GenericViewSet):
 
         with transaction.atomic():  # rollback everything if any row fails
             for row_idx, user_id, name, date, score in rows:
-
                 alias = UserAlias.objects.filter(id=user_id).first()
                 instance = alias.user if alias else None
 

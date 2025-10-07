@@ -1,9 +1,9 @@
 from core.permissions import IsAdmin
 from django.db import transaction
-from rest_framework import viewsets, status, serializers
+from rest_framework import viewsets, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from core.models import UserGroup, User, Training
+from core.models import UserGroup, Training
 from core.serializers.groups import (
     UserGroupSerializer,
     GroupBatchManageUsersSerializer,

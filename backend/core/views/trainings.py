@@ -1,12 +1,12 @@
 # core/views/trainings.py
 from django.http import Http404
-from django.db.models import Q, Prefetch
+from django.db.models import Prefetch
 from core.utils import paginate_qs
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from core.models import Training, User, UserAlias, TrainingRecord
+from core.models import Training, User, TrainingRecord
 from core.serializers.trainings import (
     TrainingSerializer,
     TrainingCreateSerializer,
