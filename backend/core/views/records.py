@@ -13,7 +13,7 @@ from core.serializers.records import (
     TrainingRecordCreateSerializer,
     TrainingRecordPatchSerializer,
 )
-from core.permissions import IsAuthenticated, IsAdmin
+from core.permissions import IsAdmin
 from core.utils import (
     COMPLETEION_DATE_COL,
     NAME_COL,
@@ -28,7 +28,7 @@ from core.models import Training  # Import here if not already imported
 
 
 class TrainingRecordViewSet(viewsets.GenericViewSet):
-    permission_classes = [IsAuthenticated, IsAdmin]
+    permission_classes = [IsAdmin]
 
     def get_object(self):
         pk = self.kwargs.get("pk")
