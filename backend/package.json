@@ -1,0 +1,11 @@
+{
+  "name": "backend",
+  "private": true,
+  "scripts": {
+    "postinstall": "node venv-tool.js --init",
+    "py": "node venv-tool.js --python",
+    "db:clean": "git clean -xdf core/migrations db.sqlite3",
+    "db:migrate": "npm run py manage.py makemigrations && npm run py manage.py migrate",
+    "server": "npm run py manage.py runserver"
+  }
+}
