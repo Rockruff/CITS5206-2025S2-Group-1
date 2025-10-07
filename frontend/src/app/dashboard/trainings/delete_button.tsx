@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { revalidatePath } from "@/api/common";
 import { deleteTraining } from "@/api/trainings";
@@ -14,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useForm } from "@/hooks/form";
 
 export default function DeleteTrainingButton({
   children,
@@ -25,22 +25,14 @@ export default function DeleteTrainingButton({
   name: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [working, setWorking] = useState(false);
+  const { working, error, submit } = useForm();
 
-  const handleDelete = async () => {
-    setWorking(true);
-    try {
-      await deleteTraining(id);
-      revalidatePath("/api/trainings");
-      revalidatePath("/api/groups");
-      setOpen(false);
-      toast.success("Training Deleted");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete training");
-    } finally {
-      setWorking(false);
-    }
-  };
+  const handleDelete = submit(async () => {
+    await deleteTraining(id);
+    revalidatePath("/api/trainings");
+    revalidatePath("/api/groups");
+    setOpen(false);
+  });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -50,6 +42,7 @@ export default function DeleteTrainingButton({
           <DialogTitle>Delete Training</DialogTitle>
           <DialogDescription>Are you sure you want to delete "{name}"? This action cannot be undone.</DialogDescription>
         </DialogHeader>
+        <div className="text-destructive text-sm empty:hidden">{error}</div>
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="ghost">Cancel</Button>

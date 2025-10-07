@@ -2,18 +2,6 @@
 
 This is the repository for our UWA CITS5206 Capstone Project.
 
-## Team Members
-
-| PERSON_ID | SURNAME     | GIVEN_NAMES         |
-| --------- | ----------- | ------------------- |
-| 24260355  | Fington     | Christina           |
-| 24301655  | Shen        | Zhaodong            |
-| 24076678  | Dai         | Wei                 |
-| 24261923  | Thomas      | Dani                |
-| 24117655  | Shen        | Siqi                |
-| 24297797  | Kanakaratne | Gayathri Kasunthika |
-| 24004729  | Rawat       | Manas               |
-
 ## How to Run
 
 ### 1. Clone the repository
@@ -41,18 +29,17 @@ The above code will take some time to run and install all the dependencies. Once
 
 ```bash
 cd backend
+npm run server
+```
 
-# Activate the Python virtual environment
-# On Linux/macOS:
-source .venv/bin/activate
-# On Windows (PowerShell):
-# .\.venv\Scripts\Activate.ps1
-# On Windows (cmd.exe):
-# .\.venv\Scripts\activate.bat
+If you encounter database issues (for example, during the first setup or after changing your Django models), you can reset and rebuild the database:
 
-python manage.py makemigrations
-python manage.py migrate
-python manage.py runserver
+```bash
+# (Optional) Delete existing database and migrations
+npm run db:clean
+
+# Recreate migrations and apply them
+npm run db:migrate
 ```
 
 ### 4. Start the Frontend Server
@@ -66,3 +53,17 @@ npm run dev
 ```
 
 Follow the link displayed in the terminal to access the frontend server.
+
+## Team Members
+
+(Ordered by Student Number)
+
+| Student Number | Surname     | Given Name          |
+| -------------- | ----------- | ------------------- |
+| 24004729       | Rawat       | Manas               |
+| 24076678       | Dai         | Wei                 |
+| 24117655       | Shen        | Siqi                |
+| 24260355       | Fington     | Christina           |
+| 24261923       | Thomas      | Dani                |
+| 24297797       | Kanakaratne | Gayathri Kasunthika |
+| 24301655       | Shen        | Zhaodong            |

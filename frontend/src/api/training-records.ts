@@ -7,7 +7,7 @@ export interface TrainingRecord {
   user: string; // user_id
   training: string; // training_id
   details: Record<string, any>;
-  status: "FAILED" | "EXPIRED" | "COMPLETED";
+  status: string;
 }
 
 export interface TrainingRecordCreateRequest {

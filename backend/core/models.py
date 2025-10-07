@@ -109,7 +109,7 @@ class TrainingRecord(models.Model):
             return "FAILED"
         if self.is_expired():
             return "EXPIRED"
-        return "COMPLETED"
+        return "PASSED"
 
 
 class TrainingRecordAttachment(models.Model):

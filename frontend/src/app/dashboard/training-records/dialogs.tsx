@@ -23,7 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "@/hooks/form";
 import { useSet } from "@/hooks/reactive-set";
@@ -117,14 +117,7 @@ export function CreateTrainingRecordDialog({ children }: { children: React.React
             {trainingObj?.type === "LMS" && (
               <div className="flex flex-col gap-2">
                 <label className="text-sm">Score ({trainingObj.config.completance_score} to pass)</label>
-                <Input
-                  type="number"
-                  value={score}
-                  onChange={(e) => {
-                    const value = e.target.valueAsNumber;
-                    setScore(value);
-                  }}
-                />
+                <NumberInput value={score} onValueChange={setScore} />
               </div>
             )}
           </>
@@ -205,14 +198,7 @@ export function EditTrainingRecordDialog({ children, record }: { children: React
         {trainingObj?.type === "LMS" && (
           <div className="flex flex-col gap-2">
             <label className="text-sm">Score ({trainingObj.config.completance_score} to pass)</label>
-            <Input
-              type="number"
-              value={score}
-              onChange={(e) => {
-                const value = e.target.valueAsNumber;
-                setScore(value);
-              }}
-            />
+            <NumberInput value={score} onValueChange={setScore} />
           </div>
         )}
 

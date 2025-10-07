@@ -1,4 +1,3 @@
-from datetime import datetime
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -13,7 +12,7 @@ from core.serializers.records import (
     TrainingRecordCreateSerializer,
     TrainingRecordPatchSerializer,
 )
-from core.permissions import IsAuthenticated, IsAdmin
+from core.permissions import IsAdmin
 from core.utils import (
     COMPLETEION_DATE_COL,
     NAME_COL,
@@ -28,7 +27,7 @@ from core.models import Training  # Import here if not already imported
 
 
 class TrainingRecordViewSet(viewsets.GenericViewSet):
-    permission_classes = [IsAuthenticated, IsAdmin]
+    permission_classes = [IsAdmin]
 
     def get_object(self):
         pk = self.kwargs.get("pk")
@@ -154,7 +153,6 @@ class TrainingRecordViewSet(viewsets.GenericViewSet):
 
         with transaction.atomic():  # rollback everything if any row fails
             for row_idx, user_id, name, date, score in rows:
-
                 alias = UserAlias.objects.filter(id=user_id).first()
                 instance = alias.user if alias else None
 

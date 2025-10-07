@@ -1,10 +1,9 @@
-from ..models import TrainingRecord, Training, User
+from ..models import TrainingRecord
 from rest_framework import serializers
 
 
 # --------- Serializers (inline) ---------
 class TrainingRecordReadSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = TrainingRecord
         fields = ["id", "user", "training", "timestamp", "details", "status"]

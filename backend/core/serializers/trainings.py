@@ -1,6 +1,6 @@
 # core/serializers/trainings.py
 from rest_framework import serializers
-from core.models import Training, UserGroup, User
+from core.models import Training, User
 
 
 class TrainingUserStatusSerializer(serializers.ModelSerializer):

@@ -3,7 +3,6 @@ from core.models import UserGroup, User, Training
 
 
 class UserGroupSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = UserGroup
         fields = ["id", "name", "description", "trainings", "timestamp"]

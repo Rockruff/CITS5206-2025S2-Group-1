@@ -134,7 +134,7 @@ export default function Trainings() {
                 <td>
                   <Link href={`/dashboard/trainings/${training.id}`}>{training.name}</Link>
                 </td>
-                <td>{training.description?.trim() ? training.description : "—"}</td>
+                <td>{training.description}</td>
                 <td>{training.type}</td>
                 <td>{training.expiry === 0 ? "Never" : `${training.expiry} Days`}</td>
                 <td>{new Date(training.timestamp).toLocaleDateString()}</td>

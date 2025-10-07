@@ -5,7 +5,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from core.models import User, UserAlias
-from core.models import UserGroup
 from core.models import Training, TrainingRecord
 from core.serializers.users import (
     UserSerializer,

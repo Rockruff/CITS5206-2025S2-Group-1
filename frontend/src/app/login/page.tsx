@@ -1,8 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-
 import { login, post } from "@/api/common";
 import Logo from "@/components/app/logo";
 import SubmitButton from "@/components/common/submit";
@@ -16,16 +13,6 @@ interface LoginResponse {
 
 export default function LoginPage() {
   const { useField, error, working, reset, submit } = useForm();
-  const router = useRouter();
-
-  // If already logged in, go straight to dashboard
-  useEffect(() => {
-    try {
-      const access = localStorage.getItem("access");
-      if (access) router.replace("/dashboard");
-    } catch {}
-  }, []);
-
   const [id, setId] = useField("");
 
   const handleSubmit = submit(async () => {

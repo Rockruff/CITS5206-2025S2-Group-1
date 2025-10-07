@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Input, NumberInput } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "@/hooks/form";
 
@@ -68,58 +68,51 @@ export function CreateTrainingDialog({ children }: { children: React.ReactNode }
           <DialogDescription>Create a new training course by specifying its details.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Name</label>
-            <Input placeholder="e.g. Laboratory Safety Training" value={name} onValueChange={setName} />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Description</label>
-            <Input
-              placeholder="e.g. Basic laboratory safety procedures for students"
-              value={description}
-              onValueChange={setDescription}
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Type</label>
-            <Select value={type} onValueChange={(value: "LMS" | "TRYBOOKING" | "EXTERNAL") => setType(value)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select training type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="LMS">LMS</SelectItem>
-                <SelectItem value="TRYBOOKING">TryBooking</SelectItem>
-                <SelectItem value="EXTERNAL">External</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Expiry (days)</label>
-            <Input type="number" placeholder="0 for no expiry" value={expiry} onValueChange={setExpiry} min="0" />
-            <p className="text-muted-foreground text-xs">
-              Validaty period of the underlying training records in days. (0 = no expiry)
-            </p>
-          </div>
-
-          {type === "LMS" && (
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Completion Score</label>
-              <Input
-                type="number"
-                value={completanceScore}
-                onChange={(e) => setCompletanceScore(e.target.valueAsNumber)}
-                min={0}
-              />
-              <p className="text-muted-foreground text-xs">Minimum score required to complete the training</p>
-            </div>
-          )}
-
-          <div className="text-destructive text-sm empty:hidden">{error}</div>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium">Name</label>
+          <Input placeholder="e.g. Laboratory Safety Training" value={name} onValueChange={setName} />
         </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium">Description</label>
+          <Input
+            placeholder="e.g. Basic laboratory safety procedures for students"
+            value={description}
+            onValueChange={setDescription}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium">Type</label>
+          <Select value={type} onValueChange={(value: "LMS" | "TRYBOOKING" | "EXTERNAL") => setType(value)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select training type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="LMS">LMS</SelectItem>
+              <SelectItem value="TRYBOOKING">TryBooking</SelectItem>
+              <SelectItem value="EXTERNAL">External</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium">Expiry (days)</label>
+          <Input type="number" placeholder="0 for no expiry" value={expiry} onValueChange={setExpiry} min="0" />
+          <p className="text-muted-foreground text-xs">
+            Validaty period of the underlying training records in days. (0 = no expiry)
+          </p>
+        </div>
+
+        {type === "LMS" && (
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Completion Score</label>
+            <NumberInput value={completanceScore} onValueChange={setCompletanceScore} />
+            <p className="text-muted-foreground text-xs">Minimum score required to complete the training</p>
+          </div>
+        )}
+
+        <div className="text-destructive text-sm empty:hidden">{error}</div>
 
         <DialogFooter>
           <DialogClose asChild>
