@@ -110,8 +110,8 @@ export default function TrainingPage({ params }: { params: Promise<{ id: string 
                 <SelectClear>Any Status</SelectClear>
                 <SelectItem value="PENDING">Pending</SelectItem>
                 <SelectItem value="FAILED">Failed</SelectItem>
+                <SelectItem value="PASSED">Passed</SelectItem>
                 <SelectItem value="EXPIRED">Expired</SelectItem>
-                <SelectItem value="COMPLETED">Completed</SelectItem>
               </SelectContent>
             </ClearableSelect>
           </div>
