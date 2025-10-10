@@ -57,7 +57,7 @@ If you encounter any dependency issues after checking out the latest code, run `
 
 ## Building & Deployment
 
-This repository includes a `Dockerfile` that enables simple and consistent deployment of the SafeTrack system to any cloud environment.
+This repository includes a `Dockerfile` that enables simple and consistent deployment of the system to any cloud environment.
 
 ### 1. Build the Docker Image
 

@@ -1,7 +1,3 @@
-# Usage:
-# docker build . --tag safetrack:latest
-# docker run -d -p 80:3000 safetrack:latest
-
 FROM node:22-slim
 
 RUN apt update
