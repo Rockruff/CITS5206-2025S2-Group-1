@@ -48,11 +48,12 @@ Navigate to the root repository and then choose the frontend folder and run the 
 
 ```bash
 cd frontend
-npm install  #installs all the required dependencies.
 npm run dev
 ```
 
 Follow the link displayed in the terminal to access the frontend server.
+
+If you encounter any dependency issues after checking out the latest code, run `npm install` again in the root directory of the repository as described in Step 2.
 
 ## Team Members
 
