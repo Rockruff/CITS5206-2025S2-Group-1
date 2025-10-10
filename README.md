@@ -55,6 +55,28 @@ Follow the link displayed in the terminal to access the frontend server.
 
 If you encounter any dependency issues after checking out the latest code, run `npm install` again in the root directory of the repository as described in Step 2.
 
+## Building & Deployment
+
+This repository includes a `Dockerfile` that enables simple and consistent deployment of the SafeTrack system to any cloud environment.
+
+### 1. Build the Docker Image
+
+From the project root, build the Docker image:
+
+```bash
+docker build -t safetrack:latest .
+```
+
+### 2. Run the Container
+
+To deploy the service and expose it on port **80** (the application runs internally on port **3000**):
+
+```bash
+docker run -d -p 80:3000 safetrack:latest
+```
+
+This starts the container in detached mode (`-d`), making it accessible through your server’s public IP or domain name.
+
 ## Team Members
 
 (Ordered by Student Number)

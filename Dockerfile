@@ -29,5 +29,5 @@ EXPOSE 3000
 
 # Default command:
 # 1. Start backend in background
-# 2. Start frontend in debug mode
+# 2. Start frontend (at port 3000)
 CMD ["/bin/bash", "-c", "npm run --prefix backend server & npm run --prefix frontend start"]
