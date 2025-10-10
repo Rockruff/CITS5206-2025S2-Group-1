@@ -40,7 +40,7 @@ export default function Trainings() {
   return (
     <>
       <div>
-        <h1 className="text-2xl font-bold">Training Management</h1>
+        <h1 className="text-xl font-bold">Training Management</h1>
         <p className="text-muted-foreground">Manage training courses and their configurations</p>
       </div>
 

@@ -53,7 +53,7 @@ export default function TrainingRecords() {
     <>
       <div>
         <h1 className="text-xl font-bold">Training Records</h1>
-        <p className="text-muted-foreground">Manage training completion records and assignments.</p>
+        <p className="text-muted-foreground">Manage training completion records.</p>
       </div>
 
       <div className="bg-background flex flex-1 flex-col overflow-hidden rounded-lg shadow">

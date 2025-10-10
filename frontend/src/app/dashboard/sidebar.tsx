@@ -45,9 +45,6 @@ function SidebarContent() {
         <nav className="flex flex-col gap-4 p-4">
           <div className="flex flex-col gap-1">
             <h2 className="text-xs/6 uppercase opacity-80">Main</h2>
-            <ButtonText href="/dashboard" icon={CircleGauge} onClick={closeMobileSidebar}>
-              Dashboard
-            </ButtonText>
             <ButtonText href="/dashboard/users" icon={CircleUser} onClick={closeMobileSidebar}>
               Users
             </ButtonText>
@@ -62,7 +59,10 @@ function SidebarContent() {
             </ButtonText>
           </div>
           <div className="flex flex-col gap-1">
-            <h2 className="text-xs/6 uppercase opacity-80">Reports</h2>
+            <h2 className="text-xs/6 uppercase opacity-80">Reports (Not Implemented)</h2>
+            <ButtonText href="/dashboard" icon={CircleGauge} onClick={closeMobileSidebar}>
+              Dashboard
+            </ButtonText>
             <ButtonText href="/dashboard/analytics" icon={ChartSpline} onClick={closeMobileSidebar}>
               Analytics
             </ButtonText>

@@ -165,8 +165,8 @@ export function EditTrainingRecordDialog({ children, record }: { children: React
   const { useField, error, working, submit } = useForm();
 
   const [timestamp, setTimestamp] = useField<string>(record.timestamp);
-  const [score, setScore] = useField<number>(record.details.score || 100);
 
+  const [score, setScore] = useField<number>(Number.isSafeInteger(record.details.score) ? record.details.score : 100);
   const { data: trainingObj } = getTraining(record.training);
 
   const handler = submit(async () => {
